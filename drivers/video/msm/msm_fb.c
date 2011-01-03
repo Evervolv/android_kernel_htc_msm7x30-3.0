@@ -193,7 +193,7 @@ static void msmfb_handle_dma_interrupt(struct msmfb_callback *callback)
 	if (msmfb->sleeping == UPDATING &&
 	    msmfb->frame_done == msmfb->update_frame) {
 		DLOG(SUSPEND_RESUME, "full update completed\n");
-		queue_work(msmfb->resume_workqueue, &msmfb->resume_work);
+		schedule_work(&msmfb->resume_work);
 	}
 #if PRINT_FPS
 	now = ktime_get();
@@ -1309,12 +1309,6 @@ static int msmfb_probe(struct platform_device *pdev)
 	spin_lock_init(&msmfb->update_lock);
 	mutex_init(&msmfb->panel_init_lock);
 	init_waitqueue_head(&msmfb->frame_wq);
-	msmfb->resume_workqueue = create_workqueue("panel_on");
-	if (msmfb->resume_workqueue == NULL) {
-		PR_DISP_ERR("failed to create panel_on workqueue\n");
-		ret = -ENOMEM;
-		goto error_create_workqueue;
-	}
 	INIT_WORK(&msmfb->resume_work, power_on_panel);
 	msmfb->black = kzalloc(msmfb->fb->var.bits_per_pixel*msmfb->xres,
 			       GFP_KERNEL);
@@ -1387,8 +1381,6 @@ static int msmfb_probe(struct platform_device *pdev)
 
 error_register_framebuffer:
 	wake_lock_destroy(&msmfb->idle_lock);
-	destroy_workqueue(msmfb->resume_workqueue);
-error_create_workqueue:
 	iounmap(fb->screen_base);
 error_setup_fbmem:
 	framebuffer_release(msmfb->fb);

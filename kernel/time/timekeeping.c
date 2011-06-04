@@ -74,6 +74,7 @@ static void timekeeper_setup_internals(struct clocksource *clock)
 	tmp <<= clock->shift;
 	ntpinterval = tmp;
 	tmp += clock->mult/2;
+	ntpinterval = tmp;
 	do_div(tmp, clock->mult);
 	if (tmp == 0)
 		tmp = 1;

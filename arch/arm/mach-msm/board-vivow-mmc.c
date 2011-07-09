@@ -98,7 +98,7 @@ static unsigned int vivow_wifi_status(struct device *dev)
 
 static unsigned int vivow_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static struct mmc_platform_data vivow_wifi_data = {
-	.ocr_mask		= MMC_VDD_28_29,
+	.ocr_mask		= MMC_VDD_20_21,
 	.status			= vivow_wifi_status,
 	.register_status_notify	= vivow_wifi_status_register,
 	.embedded_sdio		= &vivow_wifi_emb_data,

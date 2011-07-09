@@ -96,7 +96,7 @@ static unsigned int mecha_wifi_status(struct device *dev)
 
 static unsigned int mecha_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static struct mmc_platform_data mecha_wifi_data = {
-	.ocr_mask		= MMC_VDD_28_29,
+	.ocr_mask		= MMC_VDD_20_21,
 	.status			= mecha_wifi_status,
 	.register_status_notify	= mecha_wifi_status_register,
 	.embedded_sdio		= &mecha_wifi_emb_data,

@@ -302,7 +302,7 @@ static unsigned int kingdom_wifi_status(struct device *dev)
 
 static unsigned int kingdom_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static struct mmc_platform_data kingdom_wifi_data = {
-	.ocr_mask		= MMC_VDD_28_29,
+	.ocr_mask		= MMC_VDD_20_21,
 	.status			= kingdom_wifi_status,
 	.register_status_notify	= kingdom_wifi_status_register,
 	.embedded_sdio		= &kingdom_wifi_emb_data,

@@ -29,6 +29,7 @@
 #include <mach/msm_iomap.h>
 #include <mach/msm_fb-7x30.h>
 #include <linux/platform_device.h>
+#include <linux/export.h>
 
 #include "mdp_hw.h"
 #include "mdp_ppp.h"

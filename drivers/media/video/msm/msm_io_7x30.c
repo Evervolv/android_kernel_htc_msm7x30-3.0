@@ -427,7 +427,8 @@ int msm_camio_jpeg_clk_enable(void)
 		}
 	}
 
-	rc = clk_set_min_rate(jpeg_clk, rate);
+	rate = clk_round_rate(jpeg_clk, rate);
+	rc = clk_set_rate(jpeg_clk, rate);
 	if (rc) {
 		pr_err("[CAM] %s:%d] fail rc = %d\n", __func__, __LINE__, rc);
 		goto fail;

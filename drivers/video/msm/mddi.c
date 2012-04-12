@@ -531,7 +531,7 @@ static void mddi_resume(struct msm_mddi_client_data *cdata)
 	wake_unlock(&mddi->idle_lock);
 }
 
-static int __init mddi_get_client_caps(struct mddi_info *mddi)
+static int __devinit mddi_get_client_caps(struct mddi_info *mddi)
 {
 #if !defined(CONFIG_ARCH_MSM7X30)
 	int i, j;
@@ -838,9 +838,9 @@ void mddi_send_powerdown(struct msm_mddi_client_data *cdata)
 
 static struct mddi_info mddi_info[2];
 
-static int __init mddi_clk_setup(struct platform_device *pdev,
-				 struct mddi_info *mddi,
-				 unsigned long clk_rate)
+static int __devinit mddi_clk_setup(struct platform_device *pdev,
+				    struct mddi_info *mddi,
+				    unsigned long clk_rate)
 {
 	int ret;
 #ifdef CONFIG_MSM_MDP40

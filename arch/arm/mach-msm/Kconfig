@@ -1666,6 +1666,20 @@ config MSM7KV2_AUDIO
 	  Enables QDSP5V2-based audio drivers for audio playbacks and
 	  voice call.
 
+choice
+	prompt "MSM7K v2 Audio Version"
+	depends on MSM7KV2_AUDIO
+	default MSM7KV2_2X_AUDIO
+
+	config MSM7KV2_1X_AUDIO
+	  bool
+	    prompt "1x Version"
+
+	config MSM7KV2_2X_AUDIO
+	  bool
+	    prompt "2x Version"
+endchoice
+
 config MSM7KV2_AUDIO_WORKAROUND
 	bool "MSM7K v2 audio workaround"
 	depends on MSM7KV2_AUDIO

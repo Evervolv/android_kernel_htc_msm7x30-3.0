@@ -1167,7 +1167,7 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 		goto error;
 	}
 
-	result = kgsl_sharedmem_page_alloc_user(&entry->memdesc,
+	result = kgsl_sharedmem_vmalloc_user(&entry->memdesc,
 					     private->pagetable, len,
 					     param->flags);
 	if (result != 0)
@@ -1178,7 +1178,7 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 	result = kgsl_sharedmem_map_vma(vma, &entry->memdesc);
 	if (result) {
 		KGSL_CORE_ERR("kgsl_sharedmem_map_vma failed: %d\n", result);
-		goto error_free_alloc;
+		goto error_free_vmalloc;
 	}
 
 	param->gpuaddr = entry->memdesc.gpuaddr;
@@ -1193,7 +1193,7 @@ kgsl_ioctl_sharedmem_from_vmalloc(struct kgsl_device_private *dev_priv,
 	kgsl_check_idle(dev_priv->device);
 	return 0;
 
-error_free_alloc:
+error_free_vmalloc:
 	kgsl_sharedmem_free(&entry->memdesc);
 
 error_free_entry:
@@ -1492,8 +1492,11 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 	struct scatterlist *s;
 	unsigned long flags;
 
-	if (IS_ERR_OR_NULL(kgsl_ion_client))
-		return -ENODEV;
+	if (kgsl_ion_client == NULL) {
+		kgsl_ion_client = msm_ion_client_create(UINT_MAX, KGSL_NAME);
+		if (kgsl_ion_client == NULL)
+			return -ENODEV;
+	}
 
 	handle = ion_import_fd(kgsl_ion_client, fd);
 	if (IS_ERR_OR_NULL(handle))
@@ -2251,8 +2254,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device,
 	if (status)
 		goto error;
 
-	kgsl_ion_client = msm_ion_client_create(UINT_MAX, KGSL_NAME);
-
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 					   device->iomemname);
 	if (res == NULL) {
@@ -2350,30 +2351,22 @@ kgsl_ptdata_init(void)
 
 static void kgsl_core_exit(void)
 {
-	kgsl_mmu_ptpool_destroy(kgsl_driver.ptpool);
+	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
+
+	kgsl_mmu_ptpool_destroy(&kgsl_driver.ptpool);
 	kgsl_driver.ptpool = NULL;
 
-	kgsl_drm_exit();
-	kgsl_cffdump_destroy();
-	kgsl_core_debugfs_close();
-
-	/*
-	 * We call kgsl_sharedmem_uninit_sysfs() and device_unregister()
-	 * only if kgsl_driver.virtdev has been populated.
-	 * We check at least one member of kgsl_driver.virtdev to
-	 * see if it is not NULL (and thus, has been populated).
-	 */
-	if (kgsl_driver.virtdev.class) {
-		kgsl_sharedmem_uninit_sysfs();
-		device_unregister(&kgsl_driver.virtdev);
-	}
+	device_unregister(&kgsl_driver.virtdev);
 
 	if (kgsl_driver.class) {
 		class_destroy(kgsl_driver.class);
 		kgsl_driver.class = NULL;
 	}
 
-	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
+	kgsl_drm_exit();
+	kgsl_cffdump_destroy();
+	kgsl_core_debugfs_close();
+	kgsl_sharedmem_uninit_sysfs();
 }
 
 static int __init kgsl_core_init(void)

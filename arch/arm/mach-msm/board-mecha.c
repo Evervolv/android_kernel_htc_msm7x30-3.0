@@ -3113,11 +3113,6 @@ static struct platform_device cable_detect_device = {
 	},
 };
 
-struct platform_device htc_drm = {
-	.name = "htcdrm",
-	.id = 0,
-};
-
 static struct platform_device *devices[] __initdata = {
 	&ram_console_device,
 #ifdef CONFIG_MSM_PROC_COMM_REGULATOR

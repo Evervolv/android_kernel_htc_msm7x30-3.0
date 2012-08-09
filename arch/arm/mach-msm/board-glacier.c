@@ -639,7 +639,7 @@ static int pm8058_gpios_init(void)
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
-
+/*
 	static struct pm_gpio tp_rstz = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
@@ -650,7 +650,7 @@ static int pm8058_gpios_init(void)
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
-
+*/
 	static struct pm_gpio home_key = {
 		.direction      = PM_GPIO_DIR_IN,
 		.output_buffer  = 0,
@@ -779,14 +779,14 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s OJ_ACTION config ok\n", __func__);
-
+/*
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_TP_RSTz), &tp_rstz);
 	if (rc) {
 		printk(KERN_ERR "%s TP_RSTz config failed\n", __func__);
 		return rc;
 	} else
 	  printk(KERN_ERR "%s TP_RSTz config ok\n", __func__);
-
+*/
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_VOL_UP), &vol_up);
 	if (rc) {
 		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);

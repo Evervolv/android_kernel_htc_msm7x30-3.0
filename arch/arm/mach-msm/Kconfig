@@ -1666,6 +1666,14 @@ config MSM7KV2_AUDIO
 	  Enables QDSP5V2-based audio drivers for audio playbacks and
 	  voice call.
 
+config MSM7KV2_AUDIO_WORKAROUND
+	bool "MSM7K v2 audio workaround"
+	depends on MSM7KV2_AUDIO
+	default n
+	help
+	  Enables QDSP5V2-based audio workaround for devices that have
+	  issues with voice processing.
+
 config MSM_ADSP_REPORT_EVENTS
 	bool "Report modem events from the DSP"
 	default y

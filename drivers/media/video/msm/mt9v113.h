@@ -67,4 +67,17 @@ struct mt9v113_reg {
 	uint16_t wb_daylight_size;
 };
 
+enum mt9v113_test_mode_t {
+	TEST_OFF,
+	TEST_1,
+	TEST_2,
+	TEST_3
+};
+
+enum mt9v113_resolution_t {
+	QTR_SIZE,
+	FULL_SIZE,
+	INVALID_SIZE
+};
+
 #endif /* MT9D112_H */

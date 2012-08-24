@@ -19,6 +19,7 @@ obj-$(CONFIG_MT9D015) += mt9d015.o
 obj-$(CONFIG_OV2720) += ov2720.o
 obj-$(CONFIG_SP3D) += sp3d.o
 obj-$(CONFIG_QS_S5K4E1) += qs_s5k4e1.o
+obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o
 
 obj-$(CONFIG_MACH_MECHA) += s5k6aafx_reg_mecha.o s5k3h1gx_mecha.o s5k3h1gx_reg_mecha.o#HTC_CAM chuck
 obj-$(CONFIG_MACH_VIVO) += s5k6aafx_reg_vivo.o
@@ -37,17 +38,7 @@ obj-$(CONFIG_MACH_SHOOTER) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_re
 obj-$(CONFIG_MACH_SHOOTER_K) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_reg_cal.o s5k6aafx_reg_shooter.o qs_s5k4e1_reg.o s5k6aafx_reg_shooter_cob.o
 obj-$(CONFIG_MACH_SHOOTER_U) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_reg_cal.o s5k6aafx_reg_shooter.o qs_s5k4e1_reg.o s5k6aafx_reg_shooter_cob.o
 obj-$(CONFIG_MACH_SHOOTER_CT) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_reg_cal.o s5k6aafx_reg_shooter.o qs_s5k4e1_reg.o s5k6aafx_reg_shooter_cob.o
-<<<<<<< HEAD
-
-ifeq ($(CONFIG_S5K4E1GX),y)
-obj-$(CONFIG_MACH_SAGA) += s5k4e1gx.o s5k4e1gx_reg.o
-obj-$(CONFIG_MACH_GLACIER) += s5k4e1gx.o s5k4e1gx_reg.o
-obj-$(CONFIG_MACH_VISION) += s5k4e1gx.o s5k4e1gx_reg.o
-endif
 
 ifeq ($(CONFIG_OV8810),y)
 obj-$(CONFIG_MACH_SPADE) += ov8810.o
 endif
-=======
-obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o
->>>>>>> FETCH_HEAD

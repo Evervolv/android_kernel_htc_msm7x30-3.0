@@ -434,9 +434,9 @@ obj-$(CONFIG_MACH_FLYER) += htc_bdaddress.o
 obj-$(CONFIG_MACH_VIVO) += board-vivo.o
 obj-$(CONFIG_MACH_VIVO) += board-vivo-keypad.o
 obj-$(CONFIG_MACH_VIVO)+= board-vivo-mmc.o board-vivo-wifi.o
-obj-$(CONFIG_MACH_VIVO) += display/vivow-panel.o board-vivo-audio.o
-#obj-$(CONFIG_MACH_VIVO) += htc_sleep_clk.o htc_fast_clk_7k.o
-obj-$(CONFIG_MACH_VIVO) += htc_bdaddress.o
+obj-$(CONFIG_MACH_VIVO) += display/vivo-panel.o board-vivo-audio.o
+obj-$(CONFIG_MACH_VIVO) += htc_sleep_clk.o htc_fast_clk_7k.o
+obj-$(CONFIG_MACH_VIVO) += htc_bdaddress.o board-vivo-rfkill.o
 obj-$(CONFIG_MACH_VIVOW) += board-vivow.o
 obj-$(CONFIG_MACH_VIVOW) += board-vivow-keypad.o
 obj-$(CONFIG_MACH_VIVOW) += display/vivow-panel.o board-vivow-audio.o
@@ -469,9 +469,12 @@ obj-$(CONFIG_MACH_GLACIER) += board-glacier-keypad.o board-glacier-audio.o
 obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o
 obj-$(CONFIG_MACH_GLACIER) += display/glacier-panel.o
 obj-$(CONFIG_MACH_GLACIER) += htc_bdaddress.o
-obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
-ifeq ($(CONFIG_MICROP_COMMON),y)
-	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
+# Those panels need SPI_DISPLAY
+ifeq ($(CONFIG_SPI_DISPLAY),y)
+	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
+	ifeq ($(CONFIG_MICROP_COMMON),y)
+		obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
+	endif
 endif
 obj-$(CONFIG_MACH_VISION) += board-vision.o
 obj-$(CONFIG_MACH_VISION) += board-vision-microp.o board-vision-rfkill.o
@@ -483,7 +486,7 @@ obj-$(CONFIG_MACH_SAGA) += board-saga.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-keypad.o board-saga-rfkill.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o
 obj-$(CONFIG_MACH_SAGA) += display/saga-panel.o board-saga-audio.o
-#obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
+obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_SAGA) += htc_bdaddress.o
 obj-$(CONFIG_MACH_MECHA) += board-mecha.o
 obj-$(CONFIG_MACH_MECHA) += board-mecha-keypad.o

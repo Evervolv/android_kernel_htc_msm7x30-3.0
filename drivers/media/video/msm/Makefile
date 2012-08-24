@@ -50,6 +50,7 @@ endif
 
 ifdef CONFIG_S5K6AAFX
 obj-$(CONFIG_MACH_FLYER) += s5k6aafx.o s5k6aafx_reg_flyer.o s5k6aafx_reg_flyer_cob.o
+obj-$(CONFIG_MACH_VIVO) += s5k6aafx.o s5k6aafx_reg_vivo.o
 endif
 
 ifdef CONFIG_CAMERA_ZSL

@@ -84,14 +84,10 @@ ifeq ($(CONFIG_MSM_CAMERA_V4L2),y)
   obj-$(CONFIG_VX6953) += vx6953_v4l2.o vx6953_reg_v4l2.o
   obj-$(CONFIG_MT9V113) += mt9v113_v4l2.o mt9v113_reg_lens_9251.o
 else
-  ifdef CONFIG_MACH_BLISS
+  ifndef CONFIG_MACH_GLACIER
     obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
   else
-    ifdef CONFIG_MACH_BLISSC
-      obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
-    else
-      obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9218.o
-    endif
+    obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9218.o
   endif
   obj-$(CONFIG_VX6953) += vx6953.o vx6953_reg.o
   obj-$(CONFIG_IMX074) += imx074.o imx074_reg.o

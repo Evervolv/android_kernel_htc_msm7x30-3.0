@@ -578,7 +578,7 @@ static struct bma150_platform_data gsensor_platform_data = {
 };
 
 static struct tps65200_platform_data tps65200_data = {
-	.charger_check = 0,
+	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(SAGA_GPIO_CHG_INT)),
 };
 
 static struct i2c_board_info i2c_devices[] = {
@@ -1471,6 +1471,15 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 
 #ifdef CONFIG_SPI_QSD
 static struct spi_board_info msm_spi_board_info[] __initdata = {
+#ifdef CONFIG_SPI_DISPLAY
+	{
+		.modalias	= "spi_display",
+		.mode		= SPI_MODE_3,
+		.bus_num	= 0,
+		.chip_select	= 2,
+		.max_speed_hz	= 9963243,
+	},
+#else
 	{
 		.modalias	= "spi_qsd",
 		.mode		= SPI_MODE_3,
@@ -1478,6 +1487,7 @@ static struct spi_board_info msm_spi_board_info[] __initdata = {
 		.chip_select	= 2,
 		.max_speed_hz	= 10000000,
 	},
+#endif
 	{
 		.modalias	= "spi_aic3254",
 		.mode           = SPI_MODE_1,

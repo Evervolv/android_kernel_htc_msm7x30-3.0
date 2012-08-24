@@ -86,7 +86,6 @@
 #define GLACIER_LCD_DE                 (91)
 #define GLACIER_LCD_VSYNC              (92)
 #define GLACIER_LCD_HSYNC              (93)
-/*
 #define GLACIER_LCD_G2                 (94)
 #define GLACIER_LCD_G3                 (95)
 #define GLACIER_LCD_G4                 (96)
@@ -103,7 +102,7 @@
 #define GLACIER_LCD_R5                 (107)
 #define GLACIER_LCD_R6                 (108)
 #define GLACIER_LCD_R7                 (109)
-*/
+
 /* Audio */
 #define GLACIER_AUD_MICPATH_SEL         121
 #define GLACIER_AUD_A1026_INT           120

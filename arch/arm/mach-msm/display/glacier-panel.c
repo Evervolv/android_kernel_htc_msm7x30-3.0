@@ -221,9 +221,12 @@ err_register_lcd_bl:
 
 static struct resource resources_msm_fb[] = {
 	{
+		.start = MSM_FB_BASE,
+		.end = MSM_FB_BASE + MSM_FB_SIZE - 1,
 		.flags = IORESOURCE_MEM,
 	},
 };
+
 /*
 static struct vreg *vreg_lcd_2v8;
 static struct vreg *vreg_lcd_1v8;
@@ -793,9 +796,6 @@ int __init glacier_init_panel(void)
 		       __func__, rc);
 		return rc;
 	}
-
-	resources_msm_fb[0].start = msm_fb_base;
-	resources_msm_fb[0].end = msm_fb_base + MSM_FB_SIZE - 1;
 
 	if (panel_type == PANEL_SHARP)
 		msm_device_mdp.dev.platform_data = &mdp_pdata_sharp;

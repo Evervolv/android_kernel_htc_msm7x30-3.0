@@ -2331,7 +2331,6 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.cam_select_pin = GLACIER_CLK_SWITCH,
-	.mirror_mode = true, /* for sensor upside down */
 };
 
 static struct platform_device msm_camera_sensor_mt9v113 = {

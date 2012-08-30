@@ -48,6 +48,7 @@ obj-$(CONFIG_MACH_PRIMOC) += s5k4e5yx.o s5k4e5yx_reg_pro.o
 obj-$(CONFIG_MACH_KINGDOM) += s5k4e5yx.o s5k4e5yx_reg.o
 endif
 
+#obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o
 ifdef CONFIG_S5K6AAFX
 obj-$(CONFIG_MACH_FLYER) += s5k6aafx.o s5k6aafx_reg_flyer.o s5k6aafx_reg_flyer_cob.o
 obj-$(CONFIG_MACH_VIVO) += s5k6aafx.o s5k6aafx_reg_vivo.o
@@ -78,6 +79,7 @@ obj-$(CONFIG_MSM_CAMERA_AF_BAM) += mt9p012_bam.o
 obj-$(CONFIG_MT9P012_KM) += mt9p012_km.o mt9p012_km_reg.o
 obj-$(CONFIG_MT9E013) += mt9e013.o mt9e013_reg.o
 obj-$(CONFIG_S5K3E2FX) += s5k3e2fx.o
+obj-$(CONFIG_OV8810) += ov8810.o
 obj-$(CONFIG_S5K3H1GX) += s5k3h1gx.o s5k3h1gx_reg.o
 
 #FIXME: Merge the two ifeq causes VX6953 preview not coming up.
@@ -85,10 +87,18 @@ ifeq ($(CONFIG_MSM_CAMERA_V4L2),y)
   obj-$(CONFIG_VX6953) += vx6953_v4l2.o vx6953_reg_v4l2.o
   obj-$(CONFIG_MT9V113) += mt9v113_v4l2.o mt9v113_reg_lens_9251.o
 else
-  ifndef CONFIG_MACH_GLACIER
+  ifdef CONFIG_MACH_BLISS
     obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
   else
-    obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9218.o
+    ifdef CONFIG_MACH_BLISSC
+      obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
+    else
+      ifdef CONFIG_MACH_GLACIER
+        obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9218.o
+      else
+        obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
+      endif
+    endif
   endif
   obj-$(CONFIG_VX6953) += vx6953.o vx6953_reg.o
   obj-$(CONFIG_IMX074) += imx074.o imx074_reg.o

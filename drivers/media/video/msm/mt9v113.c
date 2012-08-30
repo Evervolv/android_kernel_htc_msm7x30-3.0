@@ -25,13 +25,14 @@
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
 #include <linux/slab.h>
+
 #ifdef CONFIG_MSM_CAMERA_8X60
 #include <mach/camera-8x60.h>
-#elif defined(CONFIG_MSM_CAMERA_7X30)
-#include <mach/camera-7x30.h>
 #endif
+#include <media/msm_camera-7x30.h>
 #include <media/msm_camera_sensor.h>
 
+#include <mach/camera-7x30.h>
 #include <mach/gpio.h>
 #include "mt9v113.h"
 #include <asm/mach-types.h>
@@ -65,7 +66,7 @@ static struct platform_device *mt9v113_pdev;
 
 static DECLARE_WAIT_QUEUE_HEAD(mt9v113_wait_queue);
 
-/* DEFINE_MUTEX(mt9v113_sem); */
+/* DECLARE_MUTEX(mt9v113_sem); */
 
 static int sensor_probe_node = 0;
 
@@ -76,6 +77,8 @@ static int i2c_transfer_retry(struct i2c_adapter *adap,
 			struct i2c_msg *msgs,
 			int len)
 {
+  return i2c_transfer(adap, msgs, len);
+#if 0
 	int i2c_retry = 0;
 	int ns; /* number sent */
 
@@ -90,6 +93,7 @@ static int i2c_transfer_retry(struct i2c_adapter *adap,
 	}
 
 	return ns == len ? 0 : -EIO;
+#endif
 }
 
 static int mt9v113_i2c_txdata(unsigned short saddr,
@@ -196,7 +200,7 @@ static int mt9v113_i2c_rxdata(unsigned short saddr,
 		 },
 	};
 
-#if 1
+#if 0
 	if (i2c_transfer_retry(mt9v113_client->adapter, msgs, 2) < 0) {
 		pr_err("[CAM]mt9v113_i2c_rxdata failed!\n");
 		return -EIO;
@@ -233,7 +237,7 @@ static int32_t mt9v113_i2c_read_w(unsigned short saddr, unsigned short raddr,
 	*rdata = buf[0] << 8 | buf[1];
 
 	if (rc < 0)
-		pr_err("[CAM] mt9v113_i2c_read_w failed!\n");
+		CDBG("mt9v113_i2c_read_w failed!\n");
 
 	return rc;
 }
@@ -271,19 +275,19 @@ unsigned short bit, unsigned short state)
 		check_bit = 0x0001 << bit;
 	else
 		check_bit = 0xFFFF & (~(0x0001 << bit));
-	pr_info("[CAM] mt9v113_i2c_write_bit check_bit:0x%4x", check_bit);
+	pr_info(" mt9v113_i2c_write_bit check_bit:0x%4x", check_bit);
 	rc = mt9v113_i2c_read_w(saddr, raddr, &check_value);
 	if (rc < 0)
 	  return rc;
 
-	pr_info("[CAM] %s: mt9v113: 0x%4x reg value = 0x%4x\n", __func__,
+	pr_info("%s: mt9v113: 0x%4x reg value = 0x%4x\n", __func__,
 		raddr, check_value);
 	if (state)
 		check_value = (check_value | check_bit);
 	else
 		check_value = (check_value & check_bit);
 
-	pr_info("[CAM] %s: mt9v113: Set to 0x%4x reg value = 0x%4x\n", __func__,
+	pr_info("%s: mt9v113: Set to 0x%4x reg value = 0x%4x\n", __func__,
 		raddr, check_value);
 
 	rc = mt9v113_i2c_write(saddr, raddr, check_value,
@@ -311,7 +315,7 @@ unsigned short bit, int check_state)
 		msleep(1);
 	}
 	if (k == CHECK_STATE_TIME) {
-		pr_err("[CAM] %s failed addr:0x%2x data check_bit:0x%2x",
+		pr_err("%s failed addr:0x%2x data check_bit:0x%2x",
 			__func__, raddr, check_bit);
 		return -1;
 	}
@@ -326,7 +330,7 @@ static int mt9v113_set_gpio(int num, int status)
 		gpio_direction_output(num, status);
 		msleep(5);
 	} else
-		pr_err("[CAM] GPIO(%d) request faile", status);
+		pr_err("GPIO(%d) request faile", status);
 
 	gpio_free(num);
 
@@ -396,23 +400,6 @@ static inline int resume(void)
 	}
 	if (k == CHECK_STATE_TIME) {
 		pr_err("[CAM]%s: check status time out (check 0x0018[14] is 0)\n",
-			__func__);
-		return -EIO;
-	}
-
-	/* check 0x301A[2] is 1 */
-	for (k = 0; k < CHECK_STATE_TIME; k++) {/* retry 100 times */
-		mt9v113_i2c_read_w(mt9v113_client->addr,
-			  0x301A, &check_value);
-		if (check_value & 0x0004) {/* check state of 0x301A */
-			pr_info("[CAM]%s: (check 0x301A[2] is 1) k=%d\n",
-				__func__, k);
-			break;
-		}
-		msleep(1);	/*MAX: delay 100ms */
-	}
-	if (k == CHECK_STATE_TIME) {
-		pr_err("[CAM]%s: check status time out (check 0x301A[2] is 1)\n",
 			__func__);
 		return -EIO;
 	}
@@ -515,9 +502,9 @@ static int mt9v113_reset(const struct msm_camera_sensor_info *dev)
 
 	if (!rc) {
 		rc = gpio_direction_output(dev->sensor_reset, 1);
-		mdelay(2);
+		msleep(2);
 		rc = gpio_direction_output(dev->sensor_reset, 0);
-		mdelay(1);
+		msleep(1);
 	} else
 		pr_err("[CAM]GPIO(%d) request faile", dev->sensor_reset);
 
@@ -530,24 +517,9 @@ static int mt9v113_reg_init(void)
 {
 	int rc = 0, k = 0;
 	unsigned short check_value;
-	struct msm_camera_sensor_info *sinfo = mt9v113_pdev->dev.platform_data;
 
     /* Power Up Start */
 	pr_info("[CAM]%s: Power Up Start\n", __func__);
-
-	rc = mt9v113_i2c_write(mt9v113_client->addr,
-					0x0018, 0x4028, WORD_LEN);
-	if (rc < 0)
-		goto reg_init_fail;
-
-	rc = mt9v113_i2c_check_bit(mt9v113_client->addr, 0x0018, 14, 0);
-	if (rc < 0)
-		goto reg_init_fail;
-
-	/* check 0x301A[2] is 1 */
-	rc = mt9v113_i2c_check_bit(mt9v113_client->addr, 0x301A, 2, 1);
-	if (rc < 0)
-		goto reg_init_fail;
 
 	rc = mt9v113_i2c_write_table(&mt9v113_regs.power_up_tbl[0],
 				     mt9v113_regs.power_up_tbl_size);
@@ -568,24 +540,17 @@ static int mt9v113_reg_init(void)
 	if (rc < 0)
 		goto reg_init_fail;
 
-	/* check 0x301A[2] is 1 */
-	rc = mt9v113_i2c_check_bit(mt9v113_client->addr, 0x301A, 2, 1);
-	if (rc < 0)
-		goto reg_init_fail;
-/*
 	rc = mt9v113_i2c_write(mt9v113_client->addr,
 					0x001A, 0x0003, WORD_LEN);
 	if (rc < 0)
 	  goto reg_init_fail;
-
-	mdelay(30);
+	mdelay(2);
 
 	rc = mt9v113_i2c_write(mt9v113_client->addr,
 					0x001A, 0x0000, WORD_LEN);
 	if (rc < 0)
 	  goto reg_init_fail;
-
-	mdelay(30);
+	mdelay(2);
 
 	rc = mt9v113_i2c_write(mt9v113_client->addr,
 					0x0018, 0x4028, WORD_LEN);
@@ -595,121 +560,35 @@ static int mt9v113_reg_init(void)
 	rc = mt9v113_i2c_check_bit(mt9v113_client->addr, 0x0018, 14, 0);
 	if (rc < 0)
 		goto reg_init_fail;
-*/
 
-	rc = mt9v113_i2c_write(mt9v113_client->addr,
-					0x31E0, 0x0001, WORD_LEN);
+
+#ifdef CONFIG_MSM_CAMERA_8X60
+	/*RESET_AND_MISC_CONTROL Parallel output port en MIPI*/
+	rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x001A, 9, 0);
 	if (rc < 0)
-		goto reg_init_fail;
+	  goto reg_init_fail;
 
-	if (sinfo->csi_if) {
-		/*RESET_AND_MISC_CONTROL Parallel output port en MIPI*/
-		rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x001A, 9, 0);
-		if (rc < 0)
-			goto reg_init_fail;
+	/*MIPI control*/
+	/* ---------------------------------------------------------------------- */
+	/* Apply Aptina vendor's suggestion to fix incorrect color issue for MIPI */
+	/* Set to enter STB(standby) after waiting for EOF(end of frame)          */
+	rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x3400, 4, 1);
+	if (rc < 0)
+	  goto reg_init_fail;
+	/* ---------------------------------------------------------------------- */
+	rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x3400, 9, 1);
+	if (rc < 0)
+	  goto reg_init_fail;
+	/*OFIFO_control_sstatus*/
+	rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x321C, 7, 0);
+	if (rc < 0)
+	  goto reg_init_fail;
+#else
+	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x001A, 0x0210, WORD_LEN);
+	if (rc < 0)
+	  goto reg_init_fail;
+#endif
 
-		/*MIPI control*/
-		/* ---------------------------------------------------------------------- */
-		/* Apply Aptina vendor's suggestion to fix incorrect color issue for MIPI */
-		/* Set to enter STB(standby) after waiting for EOF(end of frame)          */
-		rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x3400, 4, 1);
-		if (rc < 0)
-			goto reg_init_fail;
-
-		/* add retry for writing 0x3400[4] to 1 - ask by optical Steven */
-		for (k = 0; k < CHECK_STATE_TIME; k++) {/* retry 100 times */
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x3400,
-				&check_value);
-			pr_info("[CAM]%s: mt9v113: 0x3400 reg value = 0x%4x\n", __func__, check_value);
-			if (check_value & 0x0010) { /* check state of 0x3400[4] */
-				pr_info("[CAM]%s: (check 0x3400[4] is 1 ) k=%d\n",
-					__func__, k);
-				break;
-			} else {
-				check_value = (check_value | 0x0010);
-				pr_info("[CAM]%s: mt9v113: Set to 0x3400 reg value = 0x%4x\n", __func__, check_value);
-				rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3400,
-					check_value, WORD_LEN);
-				if (rc < 0)
-					goto reg_init_fail;
-			}
-			msleep(1);	/*MAX: delay 100ms */
-		}
-		if (k == CHECK_STATE_TIME) {
-			pr_err("[CAM]%s: check status time out (check 0x3400[4] is 1 )\n",
-				__func__);
-			goto reg_init_fail;
-		}
-		/* ---------------------------------------------------------------------- */
-		mdelay(10);
-
-		rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x3400, 9, 1);
-		if (rc < 0)
-			goto reg_init_fail;
-
-		/* add retry for writing 0x3400[9] to 1 - ask by optical Steven */
-		for (k = 0; k < CHECK_STATE_TIME; k++) {/* retry 100 times */
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x3400,
-				&check_value);
-			pr_info("[CAM]%s: mt9v113: 0x3400 reg value = 0x%4x\n", __func__, check_value);
-			if (check_value & 0x0200) { /* check state of 0x3400[9] */
-				pr_info("[CAM]%s: (check 0x3400[9] is 1 ) k=%d\n",
-					__func__, k);
-				break;
-			} else {
-				check_value = (check_value | 0x0200);
-				pr_info("[CAM]%s: mt9v113: Set to 0x3400 reg value = 0x%4x\n", __func__, check_value);
-				rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3400,
-					check_value, WORD_LEN);
-				if (rc < 0)
-					goto reg_init_fail;
-			}
-			msleep(1);	/*MAX: delay 100ms */
-		}
-		if (k == CHECK_STATE_TIME) {
-			pr_err("[CAM]%s: check status time out (check 0x3400[9] is 1 )\n",
-				__func__);
-			goto reg_init_fail;
-		}
-
-		/*OFIFO_control_sstatus*/
-		rc = mt9v113_i2c_write_bit(mt9v113_client->addr, 0x321C, 7, 0);
-		if (rc < 0)
-			goto reg_init_fail;
-	} else {
-
-		mdelay(10);     /* David 20110801 */
-
-/* Add retry mechanism by Mu */
-/*
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x001A, 0x0210, WORD_LEN);
-		if (rc < 0)
-			goto reg_init_fail;
-*/
-		for (k = 0; k < CHECK_STATE_TIME; k++) {  /* retry 100 times */
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x001A,
-				0x0210, WORD_LEN);
-			if (rc < 0)
-				goto reg_init_fail;
-
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x001A,
-				&check_value);
-			if (rc < 0)
-				goto reg_init_fail;
-
-			if (check_value == 0x0210)  /* check state of 0x001A */
-				break;
-
-			msleep(1);
-		}
-		if (k == CHECK_STATE_TIME) {
-			pr_err("[CAM]%s: check status time out 0x001A = 0x%x\n",
-				__func__, check_value);
-			rc = -1;
-			goto reg_init_fail;
-		}
-/* HTC_END */
-	}
 
 	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x001E, 0x0777, WORD_LEN);
 	if (rc < 0)
@@ -742,7 +621,8 @@ static int mt9v113_reg_init(void)
 	if (rc < 0)
 	  goto reg_init_fail;
 
-	msleep(30);
+	msleep(10);
+
 
 	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0014, 0x304B, WORD_LEN);
 	if (rc < 0)
@@ -826,34 +706,6 @@ reg_init_fail:
 	return rc;
 }
 
-int mt9v113_set_flip_mirror(struct msm_camera_sensor_info *info)
-{
-	int rc = 0;
-	if (info != NULL) {
-		if (info->mirror_mode) {
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x2717, WORD_LEN);
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0025, WORD_LEN);
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x272D, WORD_LEN);
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0025, WORD_LEN);
-		} else {
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x2717, WORD_LEN);
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0026, WORD_LEN);
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x272D, WORD_LEN);
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0026, WORD_LEN);
-		}
-		if (rc < 0)
-			goto set_flip_mirror_fail;
-	} else {
-		pr_err("[CAM]camera sensor info is NULL");
-		rc = -1;
-		goto set_flip_mirror_fail;
-	}
-
-	return rc;
-set_flip_mirror_fail:
-	pr_err("[CAM]mt9v113 setting flip mirror fail\n");
-	return rc;
-}
 
 /* 0726 add new feature */
 static int pre_mirror_mode;
@@ -930,7 +782,7 @@ static int mt9v113_set_front_camera_mode(enum frontcam_t frontcam_value)
 
 	/* refresh sensor */
 	if (pre_mirror_mode != frontcam_value) {
-	pr_info("[CAM] %s: re-flash\n", __func__);
+	pr_info("%s: re-flash\n", __func__);
 
 	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
 	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0006, WORD_LEN);
@@ -982,22 +834,25 @@ static int mt9v113_set_sensor_mode(int mode)
 	if (config_csi == 0) {
 		if (sinfo->csi_if) {
 			/* config mipi csi controller */
-			pr_info("[CAM] set csi config\n");
+			pr_info("set csi config\n");
 			mt9v113_csi_params.data_format = CSI_8BIT;
 			mt9v113_csi_params.lane_cnt = 1;
 			mt9v113_csi_params.lane_assign = 0xe4;
 			mt9v113_csi_params.dpcm_scheme = 0;
 			mt9v113_csi_params.settle_cnt = 0x14;
-			mt9v113_csi_params.mipi_driving_strength = 0;
-			mt9v113_csi_params.hs_impedence = 0x0F;
-
 			msm_camio_csi_config(&mt9v113_csi_params);
 			mdelay(20);
 			config_csi = 1;
 
 			rc = resume();
 			if (rc < 0)
-				pr_err("[CAM] mt9v113 resume failed\n");
+				pr_err("mt9v113 resume failed\n");
+
+#ifdef CONFIG_MSM_CAMERA_8X60
+			/* Apply sensor mirror/flip */
+			pr_info("mt9v113_sensor_open_init() , Apply sensor mirror/flip\n");
+			mt9v113_set_front_camera_mode(CAMERA_MIRROR);
+#endif
 		}
 	}
 	switch (mode) {
@@ -1030,10 +885,8 @@ static int mt9v113_set_sensor_mode(int mode)
 			pr_err("[CAM]%s: Preview fail\n", __func__);
 			return -EIO;
 		}
-
 		/*prevent preview image segmentation*/
 		msleep(150);
-
 		break;
 
 	case SENSOR_SNAPSHOT_MODE:
@@ -1083,28 +936,16 @@ static int mt9v113_set_sensor_mode(int mode)
 static int mt9v113_set_antibanding(enum antibanding_mode antibanding_value)
 {
 	int rc = 0;
-	unsigned short check_value = 0;
-	int iRetryCnt = 20;
 	pr_info("[CAM]%s: antibanding_value =%d\n", __func__, antibanding_value);
 
 	if (op_mode == SENSOR_SNAPSHOT_MODE)
 		return 0;
 	switch (antibanding_value) {
 	case CAMERA_ANTI_BANDING_50HZ:
-	while ((check_value != 0xE0) && (iRetryCnt-- > 0)) {
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA404, WORD_LEN);
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x00C0, WORD_LEN);
+	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA404, WORD_LEN);
+	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x00C0, WORD_LEN);
 			if (rc < 0)
 				return -EIO;
-
-		msleep(5);
-
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA404, WORD_LEN);
-		rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990, &check_value);
-	}
-
-	if (check_value != 0xE0)
-		pr_info("[CAM] %s: check_value: 0x%X, retry failed!\n", __func__, check_value);
 
 		break;
 	case CAMERA_ANTI_BANDING_60HZ:
@@ -1312,6 +1153,7 @@ static int mt9v113_set_contrast(enum contrast_mode contrast_value)
 }
 
 /* 20110103 add new effect feature */
+static int pre_effect;
 static int mt9v113_set_effect(int effect)
 {
 	int rc = 0, k = 0;
@@ -1321,6 +1163,10 @@ static int mt9v113_set_effect(int effect)
 		return 0;
 
 	pr_info("[CAM]%s: effect = %d\n", __func__, effect);
+
+	/* 20110103 add new effect feature */
+	if (pre_effect == effect)
+		return 0;
 
 	switch (effect) {
 	case CAMERA_EFFECT_OFF:
@@ -1457,6 +1303,9 @@ static int mt9v113_set_effect(int effect)
 		   __func__, effect);
 		return -EINVAL;
 	}
+
+	/* 20110103 add new effect feature */
+	pre_effect = effect;
 
 	return 0;
 }
@@ -1689,146 +1538,6 @@ static int mt9v113_set_wb(enum wb_mode wb_value)
 	return 0;
 }
 
-
-static int mt9v113_get_iso(uint16_t *real_iso_value)
-{
-	int rc = 0;
-	unsigned short check_value;
-
-	/* Work-around for default iso value as ISO_400 */
-	*real_iso_value = 400;
-
-	rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x3028, &check_value);
-	if (rc < 0)
-		return -EIO;
-
-	*real_iso_value = (check_value * 100) / 8;
-
-	pr_info("[CAM] %s real_iso_value: %d\n", __func__, *real_iso_value);
-	return rc;
-}
-
-static int mt9v113_set_iso(enum iso_mode iso_value)
-{
-	int rc = 0, k = 0;
-	unsigned short check_value;
-	pr_info("[CAM]%s: iso_value =%d\n", __func__, iso_value);
-
-	switch (iso_value) {
-	case CAMERA_ISO_AUTO:
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20E, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0080, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		if (rc < 0)
-			return -EIO;
-
-		for (k = 0; k < CHECK_STATE_TIME; k++) {  /* retry 100 times */
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C,
-				0xA103, WORD_LEN);
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990,
-				&check_value);
-			if (check_value == 0x0000) /* check state of 0xA103 */
-				break;
-			msleep(1);
-		}
-		if (k == CHECK_STATE_TIME) /* time out */
-			return -EIO;
-
-		break;
-	case CAMERA_ISO_100:
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20E, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0026, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		if (rc < 0)
-			return -EIO;
-
-		for (k = 0; k < CHECK_STATE_TIME; k++) {  /* retry 100 times */
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C,
-				0xA103, WORD_LEN);
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990,
-				&check_value);
-			if (check_value == 0x0000) /* check state of 0xA103 */
-				break;
-			msleep(1);
-		}
-		if (k == CHECK_STATE_TIME) /* time out */
-			return -EIO;
-
-		break;
-	case CAMERA_ISO_200:
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20E, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0046, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		if (rc < 0)
-			return -EIO;
-
-		for (k = 0; k < CHECK_STATE_TIME; k++) {  /* retry 100 times */
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C,
-				0xA103, WORD_LEN);
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990,
-				&check_value);
-			if (check_value == 0x0000) /* check state of 0xA103 */
-				break;
-			msleep(1);
-		}
-		if (k == CHECK_STATE_TIME) /* time out */
-			return -EIO;
-
-		break;
-	case CAMERA_ISO_400:
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20E, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0078, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		if (rc < 0)
-			return -EIO;
-
-		for (k = 0; k < CHECK_STATE_TIME; k++) {  /* retry 100 times */
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C,
-				0xA103, WORD_LEN);
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990,
-				&check_value);
-			if (check_value == 0x0000) /* check state of 0xA103 */
-				break;
-			msleep(1);
-		}
-		if (k == CHECK_STATE_TIME) /* time out */
-			return -EIO;
-
-		break;
-	case CAMERA_ISO_800:
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20E, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x00A0, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		if (rc < 0)
-			return -EIO;
-
-		for (k = 0; k < CHECK_STATE_TIME; k++) {  /* retry 100 times */
-			rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C,
-				0xA103, WORD_LEN);
-			rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990,
-				&check_value);
-			if (check_value == 0x0000) /* check state of 0xA103 */
-				break;
-			msleep(1);
-		}
-		if (k == CHECK_STATE_TIME) /* time out */
-			return -EIO;
-
-		break;
-	default:
-		pr_info("[CAM]%s: Not support ISO value = %d\n",
-			__func__, iso_value);
-		 return -EINVAL;
-	}
-	return 0;
-}
-
-
 static int mt9v113_vreg_enable(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
@@ -1843,11 +1552,12 @@ static int mt9v113_vreg_enable(struct platform_device *pdev)
 	rc = sdata->camera_power_on();
 	return rc;
 }
+/*
 static int mt9v113_vreg_disable(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
 	int rc;
-	pr_info("[CAM] %s camera vreg off\n", __func__);
+	printk(KERN_INFO "%s camera vreg off\n", __func__);
 	if (sdata->camera_power_off == NULL) {
 		pr_err("[CAM]sensor platform_data didnt register\n");
 		return -EIO;
@@ -1855,7 +1565,7 @@ static int mt9v113_vreg_disable(struct platform_device *pdev)
 	rc = sdata->camera_power_off();
 	return rc;
 }
-
+*/
 
 static int mt9v113_sensor_init(void)
 {
@@ -1886,20 +1596,9 @@ init_probe_fail:
 
 }
 
-
-
-static int suspend_fail_retry_count_2;
-#define SUSPEND_FAIL_RETRY_MAX_2 3
 int mt9v113_sensor_open_init(struct msm_camera_sensor_info *data)
 {
 	int rc = 0;
-	uint16_t check_value = 0;
-
-
-	if (data == NULL) {
-		pr_err("[CAM]%s sensor data is NULL\n", __func__);
-		return -EINVAL;
-	}
 
 	mt9v113_ctrl = kzalloc(sizeof(struct mt9v113_ctrl_t), GFP_KERNEL);
 	if (!mt9v113_ctrl) {
@@ -1908,63 +1607,30 @@ int mt9v113_sensor_open_init(struct msm_camera_sensor_info *data)
 		goto init_done;
 	}
 
+	if (data == NULL) {
+		pr_err("[CAM]%s sensor data is NULL\n", __func__);
+		return -EINVAL;
+	}
 	mt9v113_ctrl->sensordata = data;
-
-	if (!data->power_down_disable) {
-		pr_info("[CAM]__mt9v113_open_init sensor power on\n");
-		rc = mt9v113_vreg_enable(mt9v113_pdev);
-		if (rc < 0)
-			pr_err("[CAM]mt9v113_sensor_open_init fail sensor power on error\n");
-	}
-
-	suspend_fail_retry_count_2 = SUSPEND_FAIL_RETRY_MAX_2;
-	if (!data->power_down_disable) {
-
-probe_suspend_fail_retry_2:
-		pr_info("[CAM] mt9v113_sensor_open_init  suspend_fail_retry_count_2=%d\n", suspend_fail_retry_count_2);
-
-		/*7x30 should pad reset */
-		if (!data->csi_if)
-			msm_camio_camif_pad_reg_reset();
-
-		mdelay(5);
-
-		/*Config reset */
-		if (mt9v113_reset(data) < 0)
-			goto init_fail;
-	}
-
-	mdelay(2);
-
+	data->pdata->camera_gpio_on();
 	/*switch PCLK and MCLK to 2nd cam*/
 	pr_info("[CAM]mt9v113: mt9v113_sensor_open_init: switch clk\n");
 	if (data->camera_clk_switch != NULL)
 		data->camera_clk_switch();
 
-	data->pdata->camera_gpio_on();
-
-	mdelay(1);
-
-	if (!data->power_down_disable) {
-		/* power down mode*/
-		/* follow optical team Power Flow */
-		rc = gpio_request(data->sensor_reset, "mt9v113");
-		if (!rc) {
-			rc = gpio_direction_output(data->sensor_reset, 1);
-			mdelay(2);
-		} else
-			pr_err("[CAM]GPIO(%d) request faile", data->sensor_reset);
-		gpio_free(data->sensor_reset);
-	}
+	msleep(1);
 
 	/* Configure CAM GPIO ON (CAM_MCLK)*/
 	pr_info("[CAM]%s msm_camio_probe_on()\n", __func__);
 	msm_camio_probe_on(mt9v113_pdev);
 
 	/* Input MCLK = 24MHz */
-	pr_info("[CAM]mt9v113: MCLK enable clk\n");
 	msm_camio_clk_rate_set(24000000);
-	mdelay(3);
+	msleep(3);
+
+#ifndef CONFIG_MSM_CAMERA_8X60
+	msm_camio_camif_pad_reg_reset();
+#endif
 
 	/*read ID*/
 	rc = mt9v113_sensor_init();
@@ -1973,72 +1639,16 @@ probe_suspend_fail_retry_2:
 		goto init_fail;
 	}
 
-	if (!data->power_down_disable) {
-		/*set initial register*/
-		rc = mt9v113_reg_init();
-		if (rc < 0) {
-			pr_err("[CAM]%s: mt9v113_reg_init fail\n", __func__);
+#ifdef CONFIG_MSM_CAMERA_8X60
 
-			if (suspend_fail_retry_count_2 > 0) {
-				suspend_fail_retry_count_2--;
-				pr_info("[CAM]%s: mt9v113 reg_init fail start retry mechanism !!!\n", __func__);
-				goto probe_suspend_fail_retry_2;
-			}
-
-			goto init_fail;
-		}
-		/*set flip/mirror register*/
-		rc = mt9v113_set_flip_mirror(data);
-		if (rc < 0) {
-			pr_err("[CAM]%s: mt9v113_set_flip_mirror fail\n", __func__);
-			goto init_fail;
-		}
-
-		rc = suspend(); /* set standby mode */
-		if (rc < 0) {
-			pr_err("[CAM]%s: mt9v113 init_suspend fail\n", __func__);
-
-			if (suspend_fail_retry_count_2 > 0) {
-				suspend_fail_retry_count_2--;
-				pr_info("[CAM]%s: mt9v113 init_suspend fail start retry mechanism !!!\n", __func__);
-				goto probe_suspend_fail_retry_2;
-			}
-
-			goto init_fail;
-		}
-
-		/* Do streaming Off */
-		/* write 0x0016[5] to 0  */
-		rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0016, &check_value);
-		if (rc < 0)
-		  return rc;
-
-		pr_info("[CAM]%s: mt9v113: 0x0016 reg value = 0x%x\n",
-			__func__, check_value);
-
-		check_value = (check_value&0xFFDF);
-
-		pr_info("[CAM]%s: mt9v113: Set to 0x0016 reg value = 0x%x\n",
-			__func__, check_value);
-
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0016,
-			check_value, WORD_LEN);
-		if (rc < 0) {
-			pr_err("[CAM]%s: Enter Standby mode fail\n", __func__);
-			return rc;
-		}
+#else
+	/* standby mode to Active mode */
+	rc = resume();
+	if (rc < 0) {
+		pr_err("[CAM]%s: Enter Active mode fail\n", __func__);
+		goto init_fail;
 	}
-
-	/* power down or standby need to : */
-	if (!data->csi_if) {
-		/* standby mode to Active mode */
-		rc = resume();
-		if (rc < 0) {
-			pr_err("[CAM]%s: Enter Active mode fail\n", __func__);
-			goto init_fail;
-		}
-	}
-
+#endif
 	config_csi = 0;
 init_done:
 	pr_info("[CAM]%s:----\n", __func__);
@@ -2053,104 +1663,6 @@ static int mt9v113_init_client(struct i2c_client *client)
 {
 	/* Initialize the MSM_CAMI2C Chip */
 	init_waitqueue_head(&mt9v113_wait_queue);
-	return 0;
-}
-
-static int mt9v113_detect_sensor_status(void)
-{
-	int rc = 0, k = 0;
-	unsigned short check_value;
-
-	for (k = 0; k < CHECK_STATE_TIME; k++) {	/* retry 100 times */
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C,
-			0xA103, WORD_LEN);
-		rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0990,
-			&check_value);
-		if (check_value == 0x0000) /* check state of 0xA103 */
-			break;
-
-		msleep(1);
-	}
-
-	if (k == CHECK_STATE_TIME) /* time out */
-		pr_info("[cam]mt9v113_detect_sensor_status,time out");
-
-	return 0;
-}
-
-static int mt9v113_set_FPS(struct fps_cfg *fps)
-{
-	pr_info("[CAM]mt9v113_set_FPS,fps->fps_div=%d", fps->fps_div);
-
-	if (fps->fps_div == 10)	{
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x271F, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x067E, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0006, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x000C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-	}	else if (fps->fps_div == 15) {
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x271F, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0454, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0006, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0004, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-	} else if (fps->fps_div == 1015) {
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x271F, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0454, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0006, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x000C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-	}	else if (fps->fps_div == 0) {
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0x271F, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x022A, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0006, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA20C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x000C, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA215, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0008, WORD_LEN);
-
-		mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
-		mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
-		mdelay(1);
-
-		mt9v113_detect_sensor_status();
-	}
-
 	return 0;
 }
 
@@ -2193,20 +1705,6 @@ int mt9v113_sensor_config(void __user *argp)
 	case CFG_SET_FRONT_CAMERA_MODE: /*0726 add new feature*/
 		rc = mt9v113_set_front_camera_mode(cfg_data.cfg.frontcam_value);
 		break;
-	case CFG_GET_ISO:
-		rc = mt9v113_get_iso(&cfg_data.cfg.real_iso_value);
-		if (copy_to_user((void *)argp,
-			&cfg_data, sizeof(struct sensor_cfg_data))) {
-			pr_err("[CAM]%s copy to user error", __func__);
-		}
-		break;
-	case CFG_SET_ISO:
-		rc = mt9v113_set_iso(cfg_data.cfg.iso_value);
-		break;
-	case CFG_SET_FPS:
-		rc = mt9v113_set_FPS(&(cfg_data.cfg.fps));
-		break;
-
 	default:
 		rc = -EINVAL;
 		break;
@@ -2221,15 +1719,15 @@ int mt9v113_sensor_release(void)
 	uint16_t check_value = 0;
 	struct msm_camera_sensor_info *sdata = mt9v113_pdev->dev.platform_data;
 
-	/* enter SW standby mode */
-	pr_info("[CAM]%s: enter SW standby mode\n", __func__);
+    /* enter SW standby mode */
+    pr_info("[CAM]%s: enter SW standby mode\n", __func__);
 	suspend();
-
+	
 	/* Do streaming Off */
 	/* write 0x0016[5] to 0  */
 	rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0016, &check_value);
 	if (rc < 0)
-	  goto sensor_release;
+	  return rc;
 
 	pr_info("[CAM]%s: mt9v113: 0x0016 reg value = 0x%x\n",
 		__func__, check_value);
@@ -2243,56 +1741,26 @@ int mt9v113_sensor_release(void)
 		check_value, WORD_LEN);
 	if (rc < 0) {
 		pr_err("[CAM]%s: Enter Standby mode fail\n", __func__);
-		goto sensor_release;
+		return rc;
 	}
 
-	mdelay(2);
-
-
-/*HTC_START Horng 20110905*/
-#ifdef CONFIG_MSM_CAMERA_8X60
-	msm_mipi_csi_disable();
-#endif
-/*HTC_END*/
-
-
-	if (!sdata->power_down_disable) {
-		rc = gpio_request(sdata->sensor_reset, "mt9v113");
-		if (!rc) {
-			rc = gpio_direction_output(sdata->sensor_reset, 0);
-			mdelay(2);
-		} else
-			pr_err("[CAM]GPIO(%d) request faile", sdata->sensor_reset);
-		gpio_free(sdata->sensor_reset);
+	/*0709: optical ask : CLK switch to Main Cam after 2nd Cam release*/
+	if (sdata->camera_clk_switch != NULL && sdata->cam_select_pin) {
+	pr_info("[CAM]%s: doing clk switch to Main CAM)\n", __func__);
+	rc = gpio_request(sdata->cam_select_pin, "mt9v113");
+	if (rc < 0)
+		pr_err("[CAM]GPIO (%d) request fail\n", sdata->cam_select_pin);
+	else
+		gpio_direction_output(sdata->cam_select_pin, 0);
+	gpio_free(sdata->cam_select_pin);
 	}
+
+	msleep(1);
 
 	/* Configure CAM GPIO OFF (CAM_MCLK)*/
 	pr_info("[CAM]%s msm_camio_probe_off()\n", __func__);
 	msm_camio_probe_off(mt9v113_pdev);
 	sdata->pdata->camera_gpio_off();
-
-	mdelay(2);
-
-	/*0709: optical ask : CLK switch to Main Cam after 2nd Cam release*/
-	if (sdata->camera_clk_switch != NULL && sdata->cam_select_pin) {
-		pr_info("[CAM]%s: doing clk switch to Main CAM)\n", __func__);
-		rc = gpio_request(sdata->cam_select_pin, "mt9v113");
-		if (rc < 0)
-			pr_err("[CAM]GPIO (%d) request fail\n", sdata->cam_select_pin);
-		else
-			gpio_direction_output(sdata->cam_select_pin, 0);
-		gpio_free(sdata->cam_select_pin);
-	}
-
-	mdelay(2);
-
-	if (!sdata->power_down_disable)
-		mt9v113_vreg_disable(mt9v113_pdev);
-
-sensor_release:
-	kfree(mt9v113_ctrl);
-	mt9v113_ctrl = NULL;
-
 	return rc;
 }
 
@@ -2428,16 +1896,12 @@ static struct i2c_driver mt9v113_i2c_driver = {
 		   },
 };
 
-
-
-static int suspend_fail_retry_count;
-#define SUSPEND_FAIL_RETRY_MAX 3
-
 static int mt9v113_sensor_probe(struct msm_camera_sensor_info *info,
 				struct msm_sensor_ctrl *s)
 {
+#ifdef CONFIG_MSM_CAMERA_8X60
 	uint16_t check_value = 0;
-
+#endif
 	int rc = i2c_add_driver(&mt9v113_i2c_driver);
 	if (rc < 0 || mt9v113_client == NULL) {
 		rc = -ENOTSUPP;
@@ -2447,111 +1911,71 @@ static int mt9v113_sensor_probe(struct msm_camera_sensor_info *info,
 	pr_info("[CAM]mt9v113 s->node %d\n", s->node);
 	sensor_probe_node = s->node;
 
-	suspend_fail_retry_count = SUSPEND_FAIL_RETRY_MAX;
-probe_suspend_fail_retry:
-	pr_info("[CAM] mt9v113_sensor_probe  suspend_fail_retry_count=%d\n", suspend_fail_retry_count);
-
-
-	/*Config reset */
-	if (mt9v113_reset(info) < 0)
-		goto probe_fail;
-#if 0
 	/*switch clk source*/
 	pr_info("[CAM]mt9v113: mt9v113_sensor_probe switch clk\n");
 	if (info->camera_clk_switch != NULL)
 		info->camera_clk_switch();
-#endif
 
-	/* Configure CAM GPIO ON (CAM_MCLK)*/
-	pr_info("[CAM]%s msm_camio_probe_on()\n", __func__);
-	msm_camio_probe_on(mt9v113_pdev);
-
+	/*Config reset */
+	if (mt9v113_reset(info) < 0)
+		goto probe_fail;
 
 	/*MCLK enable*/
 	pr_info("[CAM]mt9v113: MCLK enable clk\n");
 	msm_camio_clk_rate_set(24000000);
-	mdelay(2);
-
-
-	if (!info->power_down_disable) {
-		/* power down mode */
-		rc = gpio_request(info->sensor_pwd, "mt9v113");
-		if (!rc) {
-			rc = gpio_direction_output(info->sensor_pwd, 0);
-			mdelay(2);
-		} else
-			pr_err("[CAM]GPIO(%d) request faile", info->sensor_pwd);
-		gpio_free(info->sensor_pwd);
-	}
+	msleep(1);
 
     /* follow optical team Power Flow */
 	rc = gpio_request(info->sensor_reset, "mt9v113");
 	if (!rc) {
 		rc = gpio_direction_output(info->sensor_reset, 1);
-		mdelay(2);
+		msleep(1);
 	} else
 		pr_err("[CAM]GPIO(%d) request faile", info->sensor_reset);
 	gpio_free(info->sensor_reset);
 
-    mdelay(2);
+    msleep(2);
+	/* rc = mt9v113_sensor_init(info); */
 	rc = mt9v113_sensor_init();
 	if (rc < 0)
-		goto probe_fail_close_pwr;
+		goto probe_fail;
 
 	/*set initial register*/
 	rc = mt9v113_reg_init();
 	if (rc < 0) {
 		pr_err("[CAM]%s: mt9v113_reg_init fail\n", __func__);
-		if (suspend_fail_retry_count > 0) {
-			suspend_fail_retry_count--;
-			pr_info("[CAM]%s: mt9v113 mt9v113_reg_init fail start retry mechanism !!!\n", __func__);
-			goto probe_suspend_fail_retry;
-		}
-
-		goto probe_fail_close_pwr;
-	}
-	/*set flip/mirror register*/
-	rc = mt9v113_set_flip_mirror(info);
-	if (rc < 0) {
-		pr_err("[CAM]%s: mt9v113_set_flip_mirror fail\n", __func__);
-		goto probe_fail_close_pwr;
+		goto probe_fail;
 	}
 
 	rc = suspend(); /* set standby mode */
 	if (rc < 0) {
 		pr_err("[CAM]%s: mt9v113 init_suspend fail\n", __func__);
-		if (suspend_fail_retry_count > 0) {
-			suspend_fail_retry_count--;
-			pr_info("[CAM]%s: mt9v113 init_suspend fail start retry mechanism !!!\n", __func__);
-			goto probe_suspend_fail_retry;
-		}
-
-		goto probe_fail_close_pwr;
+		goto probe_fail;
 	}
 
 
-	if (!info->power_down_disable) {
-		/* Do streaming Off */
-		/* write 0x0016[5] to 0  */
-		rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0016, &check_value);
-		if (rc < 0)
-			return rc;
+#ifdef CONFIG_MSM_CAMERA_8X60
+	/* Do streaming Off */
+	/* write 0x0016[5] to 0  */
+	rc = mt9v113_i2c_read_w(mt9v113_client->addr, 0x0016, &check_value);
+	if (rc < 0)
+	  return rc;
 
-		pr_info("[CAM]%s: mt9v113: 0x0016 reg value = 0x%x\n",
-			__func__, check_value);
+	pr_info("[CAM]%s: mt9v113: 0x0016 reg value = 0x%x\n",
+		__func__, check_value);
 
-		check_value = (check_value&0xFFDF);
+	check_value = (check_value&0xFFDF);
 
-		pr_info("[CAM]%s: mt9v113: Set to 0x0016 reg value = 0x%x\n",
-			__func__, check_value);
+	pr_info("[CAM]%s: mt9v113: Set to 0x0016 reg value = 0x%x\n",
+		__func__, check_value);
 
-		rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0016,
-			check_value, WORD_LEN);
-		if (rc < 0) {
-			pr_err("[CAM]%s: Enter Standby mode fail\n", __func__);
-			return rc;
-		}
+	rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0016,
+		check_value, WORD_LEN);
+	if (rc < 0) {
+		pr_err("[CAM]%s: Enter Standby mode fail\n", __func__);
+		return rc;
 	}
+#endif
 
 
 	s->s_init = mt9v113_sensor_open_init;
@@ -2563,62 +1987,9 @@ probe_suspend_fail_retry:
 
 	mt9v113_sysfs_init();
 
-
-	if (!info->power_down_disable) {
-		rc = gpio_request(info->sensor_reset, "mt9v113");
-		if (!rc) {
-			rc = gpio_direction_output(info->sensor_reset, 0);
-			mdelay(1);
-		} else
-			pr_err("[CAM]GPIO(%d) request faile", info->sensor_reset);
-		gpio_free(info->sensor_reset);
-	}
-
-	/* Configure CAM GPIO OFF (CAM_MCLK)*/
-	pr_info("[CAM]%s msm_camio_probe_off()\n", __func__);
-	msm_camio_probe_off(mt9v113_pdev);
-	info->pdata->camera_gpio_off();
-
-	mdelay(1);
-
-	/*0709: optical ask : CLK switch to Main Cam after 2nd Cam release*/
-	if (info->camera_clk_switch != NULL && info->cam_select_pin) {
-	pr_info("[CAM]%s: doing clk switch to Main CAM)\n", __func__);
-	rc = gpio_request(info->cam_select_pin, "mt9v113");
-	if (rc < 0)
-		pr_err("[CAM]GPIO (%d) request fail\n", info->cam_select_pin);
-	else
-		gpio_direction_output(info->cam_select_pin, 0);
-	gpio_free(info->cam_select_pin);
-	}
-
-	mdelay(1);
-
-	if (!info->power_down_disable)
-		mt9v113_vreg_disable(mt9v113_pdev);
-
-
 probe_done:
 	pr_info("[CAM]%s %s:%d\n", __FILE__, __func__, __LINE__);
 	return rc;
-probe_fail_close_pwr:
-	if (!info->power_down_disable) {
-		rc = gpio_request(info->sensor_reset, "mt9v113");
-		if (!rc) {
-			rc = gpio_direction_output(info->sensor_reset, 0);
-			mdelay(1);
-		} else
-			pr_err("[CAM]GPIO(%d) request faile", info->sensor_reset);
-		gpio_free(info->sensor_reset);
-		msm_camio_probe_off(mt9v113_pdev);
-		info->pdata->camera_gpio_off();
-		mt9v113_vreg_disable(mt9v113_pdev);
-	}
-
-	if (info->power_down_disable) {
-		msm_camio_probe_off(mt9v113_pdev);
-		info->pdata->camera_gpio_off();
-	}
 probe_fail:
 	pr_err("[CAM]mt9v113 probe faile\n");
 	return rc;
@@ -2629,24 +2000,13 @@ static int __mt9v113_probe(struct platform_device *pdev)
 {
 	int rc;
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
+	sdata->pdata->camera_gpio_on();
+	rc = mt9v113_vreg_enable(pdev);
+	if (rc < 0)
+		pr_err("[CAM]__mt9v113_probe fail sensor power on error\n");
 
-	/* power down mode */
-	if (!sdata->power_down_disable) {
-		rc = mt9v113_vreg_enable(pdev);
-		if (rc < 0)
-			pr_err("[CAM]__mt9v113_probe fail sensor power on error\n");
-
-		/*switch clk source*/
-		pr_info("[CAM]mt9v113: mt9v113_sensor_probe switch clk\n");
-		if (sdata->camera_clk_switch != NULL)
-			sdata->camera_clk_switch();
-
-		sdata->pdata->camera_gpio_on();
-		mdelay(1);
-	}
-
-		pr_info("[CAM]__mt9v113_probe\n");
-		mt9v113_pdev = pdev;
+	pr_info("[CAM]__mt9v113_probe\n");
+	mt9v113_pdev = pdev;
 
 	return msm_camera_drv_start(pdev, mt9v113_sensor_probe);
 }
@@ -2654,11 +2014,7 @@ static int __mt9v113_probe(struct platform_device *pdev)
 static struct platform_driver msm_camera_driver = {
 	.probe = __mt9v113_probe,
 	.driver = {
-#ifdef CONFIG_MSM_CAMERA_8X60
-		   .name = "msm_camera_webcam",
-#else
 		   .name = "msm_camera_mt9v113",
-#endif
 		   .owner = THIS_MODULE,
 		   },
 };

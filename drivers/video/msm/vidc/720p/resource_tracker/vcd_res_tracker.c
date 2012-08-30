@@ -16,9 +16,9 @@
 #include <linux/regulator/consumer.h>
 #include <mach/clk.h>
 #include <linux/interrupt.h>
-#include <media/msm/vidc_init.h>
-#include <media/msm/vidc_type.h>
+#include "vidc_type.h"
 #include "vcd_res_tracker.h"
+#include "vidc_init.h"
 
 #define MSM_AXI_QOS_NAME "msm_vidc_reg"
 #define AXI_CLK_SCALING
@@ -127,7 +127,6 @@ static u32 res_trk_disable_videocore(void)
 	clk_put(resource_context.hclk_div2);
 	clk_put(resource_context.hclk);
 	clk_put(resource_context.pclk);
-
 /* HTC_START - Check regulator pointer */
 	if (!IS_ERR(resource_context.regulator)) {
 		rc = regulator_disable(resource_context.regulator);
@@ -270,7 +269,6 @@ static u32 res_trk_enable_videocore(void)
 	mutex_lock(&resource_context.lock);
 	if (!resource_context.rail_enabled) {
 		int rc = -1;
-
 /* HTC_START - Check regulator pointer */
 		if (!IS_ERR(resource_context.regulator)) {
 			rc = regulator_enable(resource_context.regulator);
@@ -283,7 +281,6 @@ static u32 res_trk_enable_videocore(void)
 					__func__, rc);
 		}
 /* HTC_END */
-
 		resource_context.pclk = clk_get(resource_context.device,
 			"iface_clk");
 
@@ -498,11 +495,13 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 			mfc_freq = mfc_clk_freq_table[0];
 			axi_freq = axi_clk_freq_table_enc[0];
 		}
-		VCDRES_MSG_MED("\n ENCODER: axi_freq = %u"
+/* HTC_START */
+		pr_info("\n [VID] ENCODER: axi_freq = %u"
 			", mfc_freq = %u, calc_mfc_freq = %u,"
 			" req_perf_lvl = %u", axi_freq,
 			mfc_freq, calc_mfc_freq,
 			req_perf_lvl);
+/* HTC_END */
 	} else {
 		if (req_perf_lvl <= QVGA_PERF_LEVEL) {
 			mfc_freq = mfc_clk_freq_table[0];
@@ -518,11 +517,13 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 				axi_freq = axi_clk_freq_table_dec[1];
 			}
 		}
-		VCDRES_MSG_MED("\n DECODER: axi_freq = %u"
+/* HTC_START */
+		pr_info("\n [VID] DECODER: axi_freq = %u"
 			", mfc_freq = %u, calc_mfc_freq = %u,"
 			" req_perf_lvl = %u", axi_freq,
 			mfc_freq, calc_mfc_freq,
 			req_perf_lvl);
+/* HTC_END */
 	}
 
 #ifdef AXI_CLK_SCALING
@@ -726,30 +727,7 @@ struct ion_client *res_trk_get_ion_client(void)
 {
 	return NULL;
 }
-
 u32 res_trk_get_disable_fullhd(void)
 {
 	return 0;
 }
-
-#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-void res_trk_set_mem_type(enum ddl_mem_area mem_type)
-{
-	return;
-}
-
-int res_trk_check_for_sec_session()
-{
-	return 0;
-}
-
-int res_trk_open_secure_session()
-{
-	return -EINVAL;
-}
-
-int res_trk_close_secure_session()
-{
-	return 0;
-}
-#endif

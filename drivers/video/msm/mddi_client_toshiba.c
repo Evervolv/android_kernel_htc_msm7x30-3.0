@@ -23,6 +23,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <mach/msm_fb.h>
+#include <mach/debug_display.h>
 
 
 #define LCD_CONTROL_BLOCK_BASE 0x110000
@@ -96,9 +97,8 @@ static void toshiba_wait_vsync(struct msm_panel_data *panel_data)
 		panel->toshiba_got_int = 0;
 		client_data->activate_link(client_data); /* clears interrupt */
 	}
-	if (wait_event_timeout(toshiba_vsync_wait, panel->toshiba_got_int,
-				HZ/2) == 0)
-		printk(KERN_ERR "timeout waiting for VSYNC\n");
+	if (wait_event_timeout(toshiba_vsync_wait, panel->toshiba_got_int, HZ/2) == 0)
+		PR_DISP_ERR("timeout waiting for VSYNC\n");
 	panel->toshiba_got_int = 0;
 	/* interrupt clears when screen dma starts */
 }
@@ -115,7 +115,7 @@ static int toshiba_suspend(struct msm_panel_data *panel_data)
 
 	ret = bridge_data->uninit(bridge_data, client_data);
 	if (ret) {
-		printk(KERN_INFO "mddi toshiba client: non zero return from "
+		PR_DISP_INFO("mddi toshiba client: non zero return from "
 			"uninit\n");
 		return ret;
 	}
@@ -202,7 +202,7 @@ static int setup_vsync(struct panel_info *panel,
 			  "vsync", panel);
 	if (ret)
 		goto err_request_irq_failed;
-	printk(KERN_INFO "vsync on gpio %d now %d\n",
+	PR_DISP_INFO("vsync on gpio %d now %d\n",
 	       gpio, gpio_get_value(gpio));
 	return 0;
 

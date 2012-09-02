@@ -34,7 +34,7 @@
 #include "../board-vivow.h"
 #include "../devices.h"
 #include "../proc_comm.h"
-#include "../../../../drivers/video/msm/mdp_hw.h"
+#include "../../../../drivers/video/msm_7x30/mdp_hw.h"
 
 #if 1
 #define B(s...) printk(s)

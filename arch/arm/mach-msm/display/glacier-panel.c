@@ -46,8 +46,9 @@ struct vreg {
         unsigned id;
 };
 
-struct vreg *vreg_ldo19, *vreg_ldo20;
-struct vreg *vreg_ldo12;
+struct vreg *V_LCMIO_1V8;
+struct vreg *V_LCMIO_2V8;
+struct vreg *OJ_2V85;
 
 static struct clk *axi_clk;
 
@@ -64,7 +65,7 @@ static struct clk *axi_clk;
 #define PWM_SONY_MIN			13
 #define PWM_SONY_MAX			255
 
-#define DEFAULT_BRIGHTNESS 	PWM_USER_DEF
+#define DEFAULT_BRIGHTNESS 		255
 
 static struct cabc_t {
 	struct led_classdev lcd_backlight;
@@ -201,16 +202,6 @@ static int glacier_backlight_probe(struct platform_device *pdev)
 		goto err_register_lcd_bl;
 
 	return 0;
-#if 0
-	err = device_create_file(cabc.lcd_backlight.dev, &auto_attr);
-	if (err)
-		goto err_out;
-
-	return 0;
-
-err_out:
-		device_remove_file(&pdev->dev, &auto_attr);
-#endif
 
 err_register_lcd_bl:
 	led_classdev_unregister(&cabc.lcd_backlight);
@@ -227,10 +218,6 @@ static struct resource resources_msm_fb[] = {
 	},
 };
 
-/*
-static struct vreg *vreg_lcd_2v8;
-static struct vreg *vreg_lcd_1v8;
-*/
 #define REG_WAIT (0xffff)
 
 struct nov_regs {
@@ -603,13 +590,9 @@ glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 	client_data->auto_hibernate(client_data, 0);
 	/* HTC, Add 50 ms delay for stability of driver IC at high temperature */
 	hr_msleep(50);
-	if (panel_type == PANEL_SHARP) {
-		/* disable driver ic flip since sharp used mdp flip */
-		client_data->remote_write(client_data, 0x00, 0x3600);
-		client_data->remote_write(client_data, 0x24, 0x5300);
-	} else {
-		client_data->remote_write(client_data, 0x24, 0x5300);
-	}
+	/* disable driver ic flip since sharp used mdp flip */
+	client_data->remote_write(client_data, 0x00, 0x3600);
+	client_data->remote_write(client_data, 0x24, 0x5300);
 	glacier_backlight_switch(LED_FULL);
 	client_data->auto_hibernate(client_data, 1);
 	return 0;
@@ -642,7 +625,7 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 		if(axi_clk)
 			clk_set_rate(axi_clk, 192000000);
 
-		config = PCOM_GPIO_CFG(GLACIER_LCD_2V85_EN, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		config = PCOM_GPIO_CFG(GLACIER_MDDI_TE, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA);
 		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
 		config = PCOM_GPIO_CFG(GLACIER_LCD_ID2, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA);
 		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
@@ -652,30 +635,25 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
 
 		/* OJ_2V85*/
-		vreg_enable(vreg_ldo12);
-		hr_msleep(1);
-		vreg_enable(vreg_ldo20);
-		hr_msleep(2);
-		vreg_enable(vreg_ldo19);
-		hr_msleep(2);
-		gpio_set_value(GLACIER_MDDI_RSTz, 1);
-		hr_msleep(2);
-		gpio_set_value(GLACIER_MDDI_RSTz, 0);
-		hr_msleep(2);
-		gpio_set_value(GLACIER_MDDI_RSTz, 1);
-		hr_msleep(20);
+		vreg_enable(OJ_2V85);
+		vreg_enable(V_LCMIO_2V8);
+		vreg_enable(V_LCMIO_1V8);
+
+		gpio_set_value(GLACIER_LCD_RSTz, 1);
+		hr_msleep(13);
+		gpio_set_value(GLACIER_LCD_RSTz, 0);
+		hr_msleep(13);
+		gpio_set_value(GLACIER_LCD_RSTz, 1);
+		hr_msleep(13);
 
 	} else {
-		/* Since both panel off sequences were identical I removed the if statement */
-		hr_msleep(80);
-		gpio_set_value(GLACIER_MDDI_RSTz, 0);
-		hr_msleep(10);
-		vreg_disable(vreg_ldo20);
-		vreg_disable(vreg_ldo19);
+		gpio_set_value(GLACIER_LCD_RSTz, 0);
+		vreg_disable(V_LCMIO_2V8);
+		vreg_disable(V_LCMIO_1V8);
 		/* OJ_2V85*/
-		vreg_disable(vreg_ldo12);
+		vreg_disable(OJ_2V85);
 
-		config = PCOM_GPIO_CFG(GLACIER_LCD_2V85_EN, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		config = PCOM_GPIO_CFG(GLACIER_MDDI_TE, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
 		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
 		config = PCOM_GPIO_CFG(GLACIER_LCD_ID2, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
 		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
@@ -684,7 +662,6 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 		config = PCOM_GPIO_CFG(GLACIER_LCD_ID0, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
 		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
 	}
-
 }
 
 static void panel_nov_fixup(uint16_t *mfr_name, uint16_t *product_code)
@@ -727,9 +704,9 @@ static struct platform_driver glacier_backlight_driver = {
 
 static struct msm_mdp_platform_data mdp_pdata_sharp = {
 #ifdef CONFIG_OVERLAY_FORCE_UPDATE
-	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR | MSM_MDP_FORCE_UPDATE,
+	.overrides = MSM_MDP4_MDDI_DMA_SWITCH | MSM_MDP_FORCE_UPDATE,
 #else
-	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR,
+	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
 #endif
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
@@ -742,9 +719,9 @@ static struct msm_mdp_platform_data mdp_pdata_sharp = {
 
 static struct msm_mdp_platform_data mdp_pdata_common = {
 #ifdef CONFIG_OVERLAY_FORCE_UPDATE
-	.overrides = MSM_MDP4_MDDI_DMA_SWITCH | MSM_MDP_FORCE_UPDATE,
+	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR | MSM_MDP_FORCE_UPDATE,
 #else
-	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
+	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR,
 #endif
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
@@ -761,58 +738,37 @@ int __init glacier_init_panel(void)
 
 	B(KERN_INFO "%s: enter. panel type %d\n", __func__, panel_type);
 
-	/* turn on L12 for OJ. Note: must before L19 */
-	vreg_ldo12 = vreg_get(NULL, "gp9");
-	vreg_set_level(vreg_ldo12, 2850);
+	/* turn on OJ_2V85 for OJ. Note: must before V_LCMIO_1V8 */
+	OJ_2V85 = vreg_get(NULL, "gp9");
 
 	/* lcd panel power */
-	/* 2.85V -- LDO20 */
-	vreg_ldo20 = vreg_get(NULL, "gp13");
+	V_LCMIO_1V8 = vreg_get(NULL, "wlan2");
 
-	if (IS_ERR(vreg_ldo20)) {
-		pr_err("%s: gp13 vreg get failed (%ld)\n",
-			__func__, PTR_ERR(vreg_ldo20));
-		return -1;
-	}
-
-	vreg_ldo19 = vreg_get(NULL, "wlan2");
-
-	if (IS_ERR(vreg_ldo19)) {
+	if (IS_ERR(V_LCMIO_1V8)) {
 		pr_err("%s: wlan2 vreg get failed (%ld)\n",
-		       __func__, PTR_ERR(vreg_ldo19));
+		       __func__, PTR_ERR(V_LCMIO_1V8));
 		return -1;
 	}
 
-	rc = vreg_set_level(vreg_ldo20, 3000);
-	if (rc) {
-		pr_err("%s: vreg LDO20 set level failed (%d)\n",
-			__func__, rc);
-		return rc;
-	}
+	V_LCMIO_2V8 = vreg_get(NULL, "gp13");
 
-	rc = vreg_set_level(vreg_ldo19, 1800);
-	if (rc) {
-		pr_err("%s: vreg LDO19 set level failed (%d)\n",
-		       __func__, rc);
-		return rc;
+	if (IS_ERR(V_LCMIO_2V8)) {
+		pr_err("%s: gp13 vreg get failed (%ld)\n",
+			__func__, PTR_ERR(V_LCMIO_2V8));
+		return -1;
 	}
 
 	if (panel_type == PANEL_SHARP)
 		msm_device_mdp.dev.platform_data = &mdp_pdata_sharp;
 	else
 		msm_device_mdp.dev.platform_data = &mdp_pdata_common;
-
 	rc = platform_device_register(&msm_device_mdp);
 	if (rc)
 		return rc;
 
 	mddi_pdata.clk_rate = 384000000;
 
-	if (panel_type == 0) {
-		mddi_pdata.type = MSM_MDP_MDDI_TYPE_I;
-	} else {
-		mddi_pdata.type = MSM_MDP_MDDI_TYPE_II;
-	}
+	mddi_pdata.type = MSM_MDP_MDDI_TYPE_II;
 
 	axi_clk = clk_get(NULL, "ebi1_mddi_clk");
 	if (IS_ERR(axi_clk)) {

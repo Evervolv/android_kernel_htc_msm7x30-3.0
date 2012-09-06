@@ -2105,12 +2105,12 @@ static int glacier_sensor_vreg_on(void)
 {
 	int rc;
 	struct pm_gpio camera_analog_pw_on = {
-		.direction		= PM_GPIO_DIR_OUT,
+		.direction	= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
 		.output_value	= 1,
-		.pull			= PM_GPIO_PULL_NO,
+		.pull		= PM_GPIO_PULL_NO,
 		.out_strength	= PM_GPIO_STRENGTH_HIGH,
-		.function = PM_GPIO_FUNC_NORMAL,
+		.function 	= PM_GPIO_FUNC_NORMAL,
 	};
 
 	pr_info("%s camera vreg on\n", __func__);
@@ -2142,12 +2142,12 @@ static int glacier_sensor_vreg_off(void)
 {
 	int rc;
 	struct pm_gpio camera_analog_pw_off = {
-		.direction		= PM_GPIO_DIR_OUT,
+		.direction	= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
 		.output_value	= 0,
-		.pull			= PM_GPIO_PULL_NO,
+		.pull		= PM_GPIO_PULL_NO,
 		.out_strength	= PM_GPIO_STRENGTH_LOW,
-		.function = PM_GPIO_FUNC_NORMAL,
+		.function 	= PM_GPIO_FUNC_NORMAL,
 	};
 
 	pr_info("%s camera vreg off\n", __func__);
@@ -2318,7 +2318,6 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.cam_select_pin = GLACIER_CLK_SWITCH,
-	.mirror_mode = false, /* for sensor upside down */
 };
 
 static struct platform_device msm_camera_sensor_mt9v113 = {

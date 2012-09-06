@@ -79,8 +79,8 @@
 #define PANEL_SONY			2
 
 /* LCD */
-#define GLACIER_LCD_2V85_EN            (22)
-#define GLACIER_MDDI_RSTz		(162)
+#define GLACIER_MDDI_TE            (22)
+#define GLACIER_LCD_RSTz		(162)
 #define GLACIER_LCD_ID0               (124)
 #define GLACIER_LCD_ID1               (126)
 #define GLACIER_LCD_ID2               (127)

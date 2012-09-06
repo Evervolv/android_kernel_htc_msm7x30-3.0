@@ -591,7 +591,9 @@ glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 	/* HTC, Add 50 ms delay for stability of driver IC at high temperature */
 	hr_msleep(50);
 	/* disable driver ic flip since sharp used mdp flip */
-	client_data->remote_write(client_data, 0x00, 0x3600);
+	if (panel_type == PANEL_SHARP) {
+		client_data->remote_write(client_data, 0x00, 0x3600);
+	}
 	client_data->remote_write(client_data, 0x24, 0x5300);
 	glacier_backlight_switch(LED_FULL);
 	client_data->auto_hibernate(client_data, 1);

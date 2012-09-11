@@ -22,12 +22,6 @@
 #include <mach/pmic.h>
 #include <mach/dal.h>
 #include "board-glacier.h"
-#if defined(CONFIG_MSM7KV2_1X_AUDIO)
-#include <mach/qdsp5v2_1x/snddev_icodec.h>
-#include <mach/qdsp5v2_1x/snddev_ecodec.h>
-#include <mach/qdsp5v2_1x/audio_def.h>
-#include <mach/qdsp5v2_1x/voice.h>
-#endif
 #if defined(CONFIG_MSM7KV2_AUDIO)
 #include <mach/qdsp5v2_2x/snddev_icodec.h>
 #include <mach/qdsp5v2_2x/snddev_ecodec.h>
@@ -200,20 +194,20 @@ void glacier_snddev_hs_spk_pamp_on(int en)
 
 void glacier_snddev_imic_pamp_on(int en)
 {
-	unsigned int engineerID = glacier_get_engineerid();
 	pr_aud_info("%s: %d\n", __func__, en);
 	if (en)
 		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_ALWAYS);
 	else
 		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_OFF);
+}
 
-	/* enable/disable back mic */
-	if ((engineerID & 0x4) == 0) {
-		if (en)
-			pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_ALWAYS);
-		else
-			pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_OFF);
-	}
+void glacier_snddev_emic_pamp_on(int en)
+{
+	pr_aud_info("%s %d\n", __func__, en);
+	if (en)
+		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_ALWAYS);
+	else
+		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_OFF);
 }
 
 int glacier_get_rx_vol(uint8_t hw, int network, int level)
@@ -242,33 +236,12 @@ void glacier_mic_bias_enable(int en, int shift)
 
 int glacier_support_audience(void)
 {
-	unsigned int engineerID = glacier_get_engineerid();
-	pr_aud_info("%s: engineerid: %x", __func__, engineerID);
-	/*Bit2:
-	0: with audience.
-	1: without audience*/
-	return engineerID & 0x4 ? 0 : 1;
+	return 0;
 }
 
 int glacier_support_back_mic(void)
 {
-	return glacier_support_audience();
-}
-
-void glacier_mic_disable(int mic)
-{
-	switch (mic) {
-	case 0: /* main mic */
-		pr_aud_info("%s: disable main mic\n", __func__);
-		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_OFF);
-		break;
-	case 1: /* back mic */
-		pr_aud_info("%s: disable back mic\n", __func__);
-		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_OFF);
-		break;
-	default:
-		break;
-	}
+	return 0;
 }
 
 static struct q5v2audio_analog_ops ops = {
@@ -279,6 +252,7 @@ static struct q5v2audio_analog_ops ops = {
 	.headset_speaker_enable	= glacier_snddev_hs_spk_pamp_on,
 	.bt_sco_enable = glacier_snddev_bt_sco_pamp_on,
 	.int_mic_enable = glacier_snddev_imic_pamp_on,
+	.ext_mic_enable = glacier_snddev_emic_pamp_on,
 	.fm_headset_enable = glacier_snddev_hsed_pamp_on,
 	.fm_speaker_enable = glacier_snddev_poweramp_on,
 };
@@ -295,7 +269,6 @@ static struct acoustic_ops acoustic = {
 	.enable_mic_bias = glacier_mic_bias_enable,
 	.support_audience = glacier_support_audience,
 	.support_back_mic = glacier_support_back_mic,
-	.mic_disable = glacier_mic_disable,
 	.mute_headset_amp = glacier_snddev_hsed_pamp_on,
 };
 
@@ -313,7 +286,7 @@ void __init glacier_audio_init(void)
 	};
 
 	mutex_init(&bt_sco_lock);
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
 	htc_7x30_register_analog_ops(&ops);
 	htc_7x30_register_ecodec_ops(&eops);
 	htc_7x30_register_voice_ops(&vops);

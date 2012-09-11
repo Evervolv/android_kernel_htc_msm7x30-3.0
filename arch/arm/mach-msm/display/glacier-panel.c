@@ -81,6 +81,8 @@ enum {
 
 enum led_brightness brightness_value = DEFAULT_BRIGHTNESS;
 
+extern unsigned long msm_fb_base;
+
 /* use one flag to have better backlight on/off performance */
 static int glacier_set_dim = 1;
 
@@ -212,8 +214,6 @@ err_register_lcd_bl:
 
 static struct resource resources_msm_fb[] = {
 	{
-		.start = MSM_FB_BASE,
-		.end = MSM_FB_BASE + MSM_FB_SIZE - 1,
 		.flags = IORESOURCE_MEM,
 	},
 };
@@ -230,7 +230,6 @@ static struct nov_regs sharp_init_seq[] = {
 	{REG_WAIT, 120},
 	{0x3500, 0x00},
 	{0x5100, 0x00},
-
 	{0x89C3, 0x0080},
 	{0x92C2, 0x0008},
 	{0x0180, 0x0014},
@@ -407,7 +406,6 @@ static struct nov_regs sony_init_seq[] = {
 	{0x3600, 0xD0},
 	{0x3500, 0x0000},
 	{0x5100, 0x00},
-
 	{0x2480, 0x0069},
 	{0x2580, 0x006C},
 	{0x2680, 0x0074},
@@ -516,8 +514,6 @@ static struct nov_regs sony_init_seq[] = {
 	{0x9180, 0x00D1},
 	{0x9280, 0x00FB},
 	{0x9380, 0x007F},
-
-	{0x2900, 0x0000},
 	{0x22c0, 0x0006},
 	{0x4400, 0x0002},
 	{0x4401, 0x0058},
@@ -593,8 +589,10 @@ glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 	/* disable driver ic flip since sharp used mdp flip */
 	if (panel_type == PANEL_SHARP) {
 		client_data->remote_write(client_data, 0x00, 0x3600);
+		client_data->remote_write(client_data, 0x24, 0x5300);
+	} else {
+		client_data->remote_write(client_data, 0x24, 0x5300);
 	}
-	client_data->remote_write(client_data, 0x24, 0x5300);
 	glacier_backlight_switch(LED_FULL);
 	client_data->auto_hibernate(client_data, 1);
 	return 0;
@@ -721,9 +719,9 @@ static struct msm_mdp_platform_data mdp_pdata_sharp = {
 
 static struct msm_mdp_platform_data mdp_pdata_common = {
 #ifdef CONFIG_OVERLAY_FORCE_UPDATE
-	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR | MSM_MDP_FORCE_UPDATE,
+	.overrides = MSM_MDP_PANEL_ROT_180 | MSM_MDP_FORCE_UPDATE,
 #else
-	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR,
+	.overrides = MSM_MDP_PANEL_ROT_180,
 #endif
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
@@ -759,6 +757,9 @@ int __init glacier_init_panel(void)
 			__func__, PTR_ERR(V_LCMIO_2V8));
 		return -1;
 	}
+
+	resources_msm_fb[0].start = msm_fb_base;
+	resources_msm_fb[0].end = msm_fb_base + MSM_FB_SIZE - 1;
 
 	if (panel_type == PANEL_SHARP)
 		msm_device_mdp.dev.platform_data = &mdp_pdata_sharp;

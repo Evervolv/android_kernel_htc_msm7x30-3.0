@@ -27,9 +27,9 @@
 #define PM8058_uP_PM_TO_SYS(pm_gpio)	   (pm_gpio + FIRST_BOARD_IRQ + NR_BOARD_IRQS)
 
 #define MSM_LINUX_BASE1		0x04000000
-#define MSM_LINUX_SIZE1		0x0C000000
+#define MSM_LINUX_SIZE1		0x0C100000
 #define MSM_LINUX_BASE2		0x20000000
-#define MSM_LINUX_SIZE2		0x0A600000
+#define MSM_LINUX_SIZE2		0x10000000
 #define MSM_MEM_256MB_OFFSET	0x10000000
 
 #define MSM_GPU_MEM_BASE	0x00100000
@@ -38,16 +38,16 @@
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE	0x00100000
 
-#define MSM_PMEM_ADSP_BASE      0x2A400000
-#define MSM_PMEM_ADSP_SIZE      0x03200000
+#define MSM_PMEM_AUDIO_SIZE	0x00200000
 
-#define PMEM_KERNEL_EBI1_BASE   0x2D600000
+#define MSM_PMEM_ADSP_SIZE	0x02600000
+
+//#define MSM_PMEM_ADSP2_SIZE     0x002C0000
+
 #define PMEM_KERNEL_EBI1_SIZE   0x00700000
 
-#define MSM_PMEM_MDP_BASE	0x2DD00000
-#define MSM_PMEM_MDP_SIZE	0x01E00000
+#define MSM_PMEM_SF_SIZE	0x01000000
 
-#define MSM_FB_BASE		0x2FB00000
 #define MSM_FB_SIZE		0x00500000
 
 #define GLACIER_GPIO_WIFI_IRQ             147
@@ -174,16 +174,13 @@
 extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
 extern int panel_type;
-extern unsigned long msm_fb_base;
-
-unsigned int glacier_get_engineerid(void);
 
 int glacier_init_mmc(unsigned int sys_rev);
 void __init glacier_audio_init(void);
 int __init glacier_init_keypad(void);
 int __init glacier_wifi_init(void);
-#ifdef CONFIG_MICROP_COMMON
 void __init glacier_microp_init(void);
-#endif
+
+/*glacier and panache will share one panel code */
 int __init glacier_init_panel(void);
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_GLACIER_H */

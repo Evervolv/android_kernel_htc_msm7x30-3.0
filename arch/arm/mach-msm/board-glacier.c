@@ -70,12 +70,6 @@
 #include <mach/qdsp5v2_2x/mi2s.h>
 #include <mach/qdsp5v2_2x/audio_dev_ctl.h>
 #endif
-#ifdef CONFIG_MSM7KV2_1X_AUDIO
-#include <mach/qdsp5v2_1x/msm_lpa.h>
-#include <mach/qdsp5v2_1x/aux_pcm.h>
-#include <mach/qdsp5v2_1x/mi2s.h>
-#include <mach/qdsp5v2_1x/audio_dev_ctl.h>
-#endif
 #include <mach/htc_battery.h>
 #include <linux/tps65200.h>
 #include <mach/rpc_server_handset.h>
@@ -150,6 +144,8 @@ struct pm8xxx_gpio_init_info {
 	unsigned			gpio;
 	struct pm_gpio			config;
 };
+
+int __init glacier_init_panel(void);
 
 static unsigned int engineerid;
 extern unsigned long msm_fb_base;
@@ -1287,7 +1283,7 @@ static void __init glacier_init_marimba(void)
 	}
 }
 
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
 static struct resource msm_aictl_resources[] = {
 	{
 		.name = "aictl",
@@ -1651,16 +1647,6 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 		.latency = 8594,
 		.residency = 23740,
 	},
-/*
-	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_NO_XO_SHUTDOWN] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.idle_enabled = 1,
-		.suspend_enabled = 1,
-		.latency = 4594,
-		.residency = 23740,
-	},
-*/
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE] = {
 #ifdef CONFIG_MSM_STANDALONE_POWER_COLLAPSE
 		.idle_supported = 1,
@@ -1802,68 +1788,6 @@ static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 		.vbus_power = msm_hsusb_vbus_power,
 		.power_budget   = 180,
 };
-#endif
-
-#if 0 // CONFIG_USB_MSM_OTG_72K
-static struct vreg *vreg_3p3;
-static int msm_hsusb_ldo_init(int init)
-{
-	uint32_t version = 0;
-	int def_vol = 3400;
-
-	version = socinfo_get_version();
-
-	if (SOCINFO_VERSION_MAJOR(version) >= 2 &&
-			SOCINFO_VERSION_MINOR(version) >= 1) {
-		def_vol = 3075;
-		pr_debug("%s: default voltage:%d\n", __func__, def_vol);
-	}
-
-	if (init) {
-		vreg_3p3 = vreg_get(NULL, "usb");
-		if (IS_ERR(vreg_3p3))
-			return PTR_ERR(vreg_3p3);
-		vreg_set_level(vreg_3p3, def_vol);
-	} else
-		vreg_put(vreg_3p3);
-
-	return 0;
-}
-
-static int msm_hsusb_ldo_enable(int enable)
-{
-	static int ldo_status;
-
-	if (!vreg_3p3 || IS_ERR(vreg_3p3))
-		return -ENODEV;
-
-	if (ldo_status == enable)
-		return 0;
-
-	ldo_status = enable;
-
-	if (enable)
-		return vreg_enable(vreg_3p3);
-
-	return vreg_disable(vreg_3p3);
-}
-
-static int msm_hsusb_ldo_set_voltage(int mV)
-{
-	static int cur_voltage = 3400;
-
-	if (!vreg_3p3 || IS_ERR(vreg_3p3))
-		return -ENODEV;
-
-	if (cur_voltage == mV)
-		return 0;
-
-	cur_voltage = mV;
-
-	pr_debug("%s: (%d)\n", __func__, mV);
-
-	return vreg_set_level(vreg_3p3, mV);
-}
 #endif
 
 static int phy_init_seq[] = { 0x06, 0x36, 0x0C, 0x31, 0x31, 0x32, 0x1, 0x0D, 0x1, 0x10, -1 };
@@ -3105,7 +3029,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_INPUT_CAPELLA_CM3602
         &capella_cm3602,
 #endif
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
         &msm_aictl_device,
         &msm_mi2s_device,
         &msm_lpa_device,
@@ -3234,14 +3158,6 @@ static void __init glacier_init(void)
 	msm_qsd_spi_init();
 
 	spi_register_board_info(msm_spi_board_info, ARRAY_SIZE(msm_spi_board_info));
-
-	if ((system_rev >= 0x80) || (engineerid & 0x2))
-		glacier_oj_data.ap_code = true;
-	platform_device_register(&glacier_oj);
-	if (!panel_type) {
-		glacier_ts_atmel_data[0].config_T9[9] = 5;
-		glacier_ts_atmel_data[0].abs_y_max = 954;
-	}
 	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	BUG_ON(msm_pm_boot_init(MSM_PM_BOOT_CONFIG_RESET_VECTOR, ioremap(0x0, PAGE_SIZE)));
 
@@ -3252,17 +3168,16 @@ static void __init glacier_init(void)
 #endif
 	qup_device_i2c_init();
 	glacier_init_marimba();
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
 	aux_pcm_gpio_init();
 	msm_snddev_init();
 	audience_gpio_init();
+	glacier_audio_init();
 #endif
+	msm_init_pmic_vibrator(3000);
 
 	i2c_register_board_info(2, msm_marimba_board_info,
 			ARRAY_SIZE(msm_marimba_board_info));
-
-	i2c_register_board_info(0, i2c_compass_devices,
-			ARRAY_SIZE(i2c_compass_devices));
 
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 				ARRAY_SIZE(msm_camera_boardinfo));
@@ -3291,6 +3206,23 @@ static void __init glacier_init(void)
 #ifdef CONFIG_MSM_CAMERA
 	config_gpio_table(camera_on_gpio_table, ARRAY_SIZE(camera_on_gpio_table));
 #endif
+
+	if ((system_rev >= 0x80) || (engineerid & 0x2)){
+		glacier_oj_data.ap_code = true;
+		platform_device_register(&glacier_oj);
+	}
+	if (!panel_type) {
+		glacier_ts_atmel_data[0].config_T9[9] = 5;
+		glacier_ts_atmel_data[0].abs_y_max = 954;
+	}
+
+	i2c_register_board_info(0, i2c_devices,	
+			ARRAY_SIZE(i2c_devices));
+
+	i2c_register_board_info(0, i2c_compass_devices,
+			ARRAY_SIZE(i2c_compass_devices));
+
+	/*Virtual_key*/
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
 	if (properties_kobj)
 		rc = sysfs_create_group(properties_kobj,
@@ -3298,17 +3230,14 @@ static void __init glacier_init(void)
 	if (!properties_kobj || rc)
 		pr_err("failed to create board_properties\n");
 
-	i2c_register_board_info(0, i2c_devices,	ARRAY_SIZE(i2c_devices));
         glacier_init_keypad();
 #ifdef CONFIG_MDP4_HW_VSYNC
 	glacier_te_gpio_config();
 #endif
 	glacier_init_panel();
-	glacier_audio_init();
 	glacier_wifi_init();
-	msm_init_pmic_vibrator(3000);
 }
-/*
+
 static unsigned pmem_sf_size = MSM_PMEM_SF_SIZE;
 static int __init pmem_sf_size_setup(char *p)
 {
@@ -3316,7 +3245,7 @@ static int __init pmem_sf_size_setup(char *p)
 	return 0;
 }
 early_param("pmem_sf_size", pmem_sf_size_setup);
-*/
+
 static unsigned fb_size = MSM_FB_SIZE;
 static int __init fb_size_setup(char *p)
 {
@@ -3333,6 +3262,14 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
 
+static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
+static int __init pmem_audio_size_setup(char *p)
+{
+	pmem_audio_size = memparse(p, NULL);
+	return 0;
+}
+early_param("pmem_audio_size", pmem_audio_size_setup);
+
 static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -3340,10 +3277,7 @@ static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
 	[MEMTYPE_EBI1] = {
-		.start	=	PMEM_KERNEL_EBI1_BASE,
-		.limit	=	PMEM_KERNEL_EBI1_SIZE,
-		.size	=	PMEM_KERNEL_EBI1_SIZE,
-		.flags	=	MEMTYPE_FLAGS_FIXED,
+		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
 };
 
@@ -3352,10 +3286,10 @@ static void __init size_pmem_device(struct android_pmem_platform_data *pdata, un
 	pdata->start = start;
 	pdata->size = size;
 	if (pdata->start)
-		pr_info("%s: pmem %s requests %lu bytes at 0x%p (0x%lx physical).\n",
+		pr_info("%s: pmem %s requests %lu bytes at 0x%p (0x%lx physical).\r\n",
 			__func__, pdata->name, size, __va(start), start);
 	else
-		pr_info("%s: pmem %s requests %lu bytes dynamically.\n",
+		pr_info("%s: pmem %s requests %lu bytes dynamically.\r\n",
 			__func__, pdata->name, size);
 }
 
@@ -3363,14 +3297,16 @@ static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	size_pmem_device(&android_pmem_adsp_pdata, 0, pmem_adsp_size);
-	/*size_pmem_device(&android_pmem_pdata, MSM_PMEM_SF_BASE, pmem_sf_size);*/
+	size_pmem_device(&android_pmem_audio_pdata, 0, pmem_audio_size);
+	size_pmem_device(&android_pmem_pdata, 0, pmem_sf_size);
+	msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
 #endif
 }
 
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
 	if (p->start == 0) {
-		pr_info("%s: reserve %lu bytes from memory %d for %s.\n", __func__, p->size, p->memory_type, p->name);
+		pr_info("%s: reserve %lu bytes from memory %d for %s.\r\n", __func__, p->size, p->memory_type, p->name);
 		msm7x30_reserve_table[p->memory_type].size += p->size;
 	}
 }
@@ -3379,6 +3315,7 @@ static void __init reserve_pmem_memory(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
+	reserve_memory_for(&android_pmem_audio_pdata);
 	reserve_memory_for(&android_pmem_pdata);
 #endif
 }
@@ -3412,13 +3349,16 @@ static void __init glacier_reserve(void)
 
 static void __init glacier_allocate_memory_regions(void)
 {
+	void *addr;
 	unsigned long size;
 
-	size = MSM_FB_SIZE;
-	msm_fb_resources[0].start = MSM_FB_BASE;
+	size = fb_size ? : MSM_FB_SIZE;
+	addr = alloc_bootmem_align(size, 0x1000);
+	msm_fb_resources[0].start = __pa(addr);
+	msm_fb_base = msm_fb_resources[0].start;
 	msm_fb_resources[0].end = msm_fb_resources[0].start + size - 1;
-	pr_info("allocating %lu bytes at 0x%p (0x%lx physical) for fb\n",
-		size, __va(MSM_FB_BASE), (unsigned long) MSM_FB_BASE);
+	printk("allocating %lu bytes at %p (%lx physical) for fb\n",
+			size, addr, __pa(addr));
 }
 
 static void __init glacier_map_io(void)

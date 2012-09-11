@@ -704,9 +704,9 @@ static struct platform_driver glacier_backlight_driver = {
 
 static struct msm_mdp_platform_data mdp_pdata_sharp = {
 #ifdef CONFIG_OVERLAY_FORCE_UPDATE
-	.overrides = MSM_MDP4_MDDI_DMA_SWITCH | MSM_MDP_FORCE_UPDATE,
+	.overrides = MSM_MDP_PANEL_ROT_180 | MSM_MDP_FORCE_UPDATE,
 #else
-	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
+	.overrides = MSM_MDP_PANEL_ROT_180,
 #endif
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
@@ -719,9 +719,9 @@ static struct msm_mdp_platform_data mdp_pdata_sharp = {
 
 static struct msm_mdp_platform_data mdp_pdata_common = {
 #ifdef CONFIG_OVERLAY_FORCE_UPDATE
-	.overrides = MSM_MDP_PANEL_ROT_180 | MSM_MDP_FORCE_UPDATE,
+	.overrides = MSM_MDP4_MDDI_DMA_SWITCH | MSM_MDP_FORCE_UPDATE,
 #else
-	.overrides = MSM_MDP_PANEL_ROT_180,
+	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
 #endif
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,

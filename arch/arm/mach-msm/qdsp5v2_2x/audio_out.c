@@ -27,7 +27,7 @@
 #include <linux/delay.h>
 #include <linux/wakelock.h>
 
-#include <linux/msm_audio_7X30.h>
+#include <linux/msm_audio.h>
 
 #include <asm/atomic.h>
 #include <asm/ioctls.h>

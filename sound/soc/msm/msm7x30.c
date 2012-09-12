@@ -32,7 +32,7 @@
 #include <sound/control.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
-#include <linux/msm_audio_7X30.h>
+#include <linux/msm_audio.h>
 #include "msm7kv2-pcm.h"
 #include <asm/mach-types.h>
 #include <mach/qdsp5v2_2x/snddev_icodec.h>

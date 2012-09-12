@@ -1,5 +1,4 @@
-
-source "drivers/video/msm/vidc/Kconfig"
+source "drivers/video/msm/sii9234/Kconfig"
 
 config FB_MSM
 	tristate "MSM Framebuffer support"
@@ -77,6 +76,36 @@ config FB_MSM_MDP40
 	  Say Y here if this is msm7x30 variant platform.
 endchoice
 
+config FB_MSM_MDP_SCALE_TABLES
+	bool
+	depends on FB_MSM && (MSM_MDP30 || MSM_MDP31 || MSM_MDP302)
+	default y
+
+config FB_MSM_LEGACY_MDP
+	bool
+	depends on FB_MSM && (MSM_MDP30 || MSM_MDP31 || MSM_MDP302)
+	default y
+
+config FB_MSM_MDP_PPP
+	bool
+	depends on FB_MSM_LEGACY_MDP
+	default y
+
+config MDP_UNDERRUN_WORKAROUND_DISABLED
+	bool "Disable MDP workaround"
+	depends on FB_MSM
+	default n
+
+config MDP4_HW_VSYNC
+	bool "QCT hardware TE"
+	depends on MSM_MDP40
+	default n
+
+config MDP_RAISE_CLOCK
+	bool "Raise MDP clock when qhd"
+	depends on MSM_MDP40
+	default n
+
 config FB_MSM_EBI2
 	bool
 	default n
@@ -98,10 +127,10 @@ config FB_MSM_OVERLAY
 	bool "MDP4 overlay support"
 	default n
 
-config FB_MSM_DTV
-	depends on FB_MSM_OVERLAY
-	bool
-	default n
+config MSM_AUTOBL_ENABLE
+        bool "ACL Service"
+        depends on FB_MSM
+        default n
 
 config FB_MSM_EXTMDDI
 	bool
@@ -304,7 +333,6 @@ config FB_MSM_WRITEBACK_MSM_PANEL
         bool "MDP overlay write back panel enable"
 	---help---
 	  Support for MDP4 OVERLAY write back mode
-
 choice
 	prompt "LCD Panel"
 	default FB_MSM_MDDI_AUTO_DETECT
@@ -563,11 +591,41 @@ config FB_MSM_EXT_INTERFACE_COMMON
 	bool
 	default n
 
+config MSM_ROTATOR
+        tristate "MSM Offline Image Rotator Driver"
+        depends on ARCH_MSM7X30 && ANDROID_PMEM
+        default y
+        help
+          This driver provides support for the image rotator HW block in the
+          MSM 7x30 SoC.
+
+config MSM_ROTATOR_USE_IMEM
+        bool "Enable rotator driver to use iMem"
+        depends on MSM_ROTATOR
+        default y
+        help
+          This option enables the msm_rotator driver to use the move efficient
+          iMem.  Some MSM platforms may not have iMem available for the rotator
+          block.  Or some systems may want the iMem to be dedicated to a
+          different function.
+
 config FB_MSM_HDMI_COMMON
 	bool
 	default n
 
 config FB_MSM_HDMI_3D
+	bool
+	default n
+
+config MSM_HDMI_MHL
+	bool "Turn on MHL chip driver"
+	depends on FB_MSM_OVERLAY && MSM_MDP40
+	bool
+	default n
+
+config MSM_HDMI_MHL_SII9232
+	bool "support sii9232 driver"
+	depends on MSM_HDMI_MHL && MSM_MDP40
 	bool
 	default n
 
@@ -611,7 +669,7 @@ config FB_MSM_HDMI_MSM_PANEL_DVI_SUPPORT
 config FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 	depends on FB_MSM_HDMI_MSM_PANEL
 	bool "Use HDCP mode"
-	default y
+	default n
 	---help---
 	  Support for HDCP mode for MSM HDMI 1080p Panel
 	  Choose to enable HDCP
@@ -711,5 +769,15 @@ config FB_MSM_DEFAULT_DEPTH_RGBA8888
 	bool "32 bits per pixel (RGBA8888)"
 
 endchoice
+
+config FB_MSM_SELF_REFRESH
+	bool "Use self refresh"
+	depends on FB_MSM
+	default n
+
+config FB_MSM_CABC
+	bool "Use CABC"
+	depends on FB_MSM
+	default n
 
 endif

@@ -22,6 +22,9 @@
 
 #include <linux/types.h>
 #include <linux/ioctl.h>
+#ifdef CONFIG_ARCH_MSM7X30
+#include <asm/sizes.h>
+#endif
 
 /* PCM Audio */
 

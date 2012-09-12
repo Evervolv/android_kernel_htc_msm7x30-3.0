@@ -18,7 +18,7 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
-#include <linux/msm_audio_7X30.h>
+#include <linux/msm_audio.h>
 #include <asm/uaccess.h>
 #include <asm/atomic.h>
 #include <mach/qdsp5v2_2x/audio_dev_ctl.h>

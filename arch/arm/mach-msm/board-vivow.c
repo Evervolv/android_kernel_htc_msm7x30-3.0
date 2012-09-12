@@ -1560,7 +1560,7 @@ static void __init msm7x30_init_marimba(void)
 		return;
 	}
 }
-#ifdef CONFIG_MSM7KV2_1X_AUDIO
+#ifdef CONFIG_MSM7KV2_AUDIO
 static struct resource msm_aictl_resources[] = {
 	{
 		.name = "aictl",

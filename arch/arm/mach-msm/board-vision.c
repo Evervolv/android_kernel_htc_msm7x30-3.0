@@ -70,12 +70,6 @@
 #include <mach/qdsp5v2_2x/mi2s.h>
 #include <mach/qdsp5v2_2x/audio_dev_ctl.h>
 #endif
-#ifdef CONFIG_MSM7KV2_1X_AUDIO
-#include <mach/qdsp5v2_1x/msm_lpa.h>
-#include <mach/qdsp5v2_1x/aux_pcm.h>
-#include <mach/qdsp5v2_1x/mi2s.h>
-#include <mach/qdsp5v2_1x/audio_dev_ctl.h>
-#endif
 #include <mach/htc_battery.h>
 #include <linux/tps65200.h>
 #include <mach/rpc_server_handset.h>
@@ -158,7 +152,7 @@ unsigned int vision_get_engineerid(void)
 	return engineerid;
 }
 
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO 
 static struct resource msm_aictl_resources[] = {
 	{
 		.name = "aictl",
@@ -1464,7 +1458,7 @@ static void __init vision_init_marimba(void)
 	}
 }
 
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO 
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
 	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
 	(1<<MSM_ADSP_CODEC_WMAPRO)|(1<<MSM_ADSP_CODEC_AMRWB)| \
@@ -3097,7 +3091,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_INPUT_CAPELLA_CM3602
         &capella_cm3602,
 #endif
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO 
         &msm_aictl_device,
         &msm_mi2s_device,
         &msm_lpa_device,
@@ -3242,7 +3236,7 @@ static void __init vision_init(void)
 #endif
 	qup_device_i2c_init();
 	vision_init_marimba();
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
 	aux_pcm_gpio_init();
 	msm_snddev_init();
 	audience_gpio_init();

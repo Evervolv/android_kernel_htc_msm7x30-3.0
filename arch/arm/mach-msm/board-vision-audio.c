@@ -22,12 +22,6 @@
 #include "board-vision.h"
 #include "devices.h"
 #include <mach/pmic.h>
-#if defined(CONFIG_MSM7KV2_1X_AUDIO)
-#include <mach/qdsp5v2_1x/snddev_icodec.h>
-#include <mach/qdsp5v2_1x/snddev_ecodec.h>
-#include <mach/qdsp5v2_1x/audio_def.h>
-#include <mach/qdsp5v2_1x/voice.h>
-#endif
 #if defined(CONFIG_MSM7KV2_AUDIO)
 #include <mach/qdsp5v2_2x/snddev_icodec.h>
 #include <mach/qdsp5v2_2x/snddev_ecodec.h>
@@ -285,7 +279,7 @@ void __init vision_audio_init(void)
 	};
 
 	mutex_init(&bt_sco_lock);
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
 	htc_7x30_register_analog_ops(&ops);
 	htc_7x30_register_ecodec_ops(&eops);
 	htc_7x30_register_voice_ops(&vops);

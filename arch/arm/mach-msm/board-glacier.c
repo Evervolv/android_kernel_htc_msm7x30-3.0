@@ -64,12 +64,10 @@
 #include <linux/android_pmem.h>
 #include <linux/input/msm_ts.h>
 #include <mach/rpc_pmapp.h>
-#ifdef CONFIG_MSM7KV2_AUDIO
-#include <mach/qdsp5v2_2x/msm_lpa.h>
-#include <mach/qdsp5v2_2x/aux_pcm.h>
-#include <mach/qdsp5v2_2x/mi2s.h>
-#include <mach/qdsp5v2_2x/audio_dev_ctl.h>
-#endif
+#include <mach/qdsp5v2/msm_lpa.h>
+#include <mach/qdsp5v2/aux_pcm.h>
+#include <mach/qdsp5v2/mi2s.h>
+#include <mach/qdsp5v2/audio_dev_ctl.h>
 #include <mach/htc_battery.h>
 #include <linux/tps65200.h>
 #include <mach/rpc_server_handset.h>
@@ -102,8 +100,8 @@
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 #include <mach/bcm_bt_lpm.h>
 #endif
-#include <mach/qdsp5v2_2x/mi2s.h>
-#include <mach/qdsp5v2_2x/audio_dev_ctl.h>
+#include <mach/qdsp5v2x/mi2s.h>
+#include <mach/qdsp5v2x/audio_dev_ctl.h>
 #include <mach/sdio_al.h>
 #include "smd_private.h"
 #include "board-glacier.h"

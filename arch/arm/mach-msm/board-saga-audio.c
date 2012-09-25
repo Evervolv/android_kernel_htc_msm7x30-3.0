@@ -22,10 +22,10 @@
 #include <mach/pmic.h>
 #include <mach/dal.h>
 #include "board-saga.h"
-#include <mach/qdsp5v2_2x/snddev_icodec.h>
-#include <mach/qdsp5v2_2x/snddev_ecodec.h>
-#include <mach/qdsp5v2_2x/audio_def.h>
-#include <mach/qdsp5v2_2x/voice.h>
+#include <mach/qdsp5v2/snddev_icodec.h>
+#include <mach/qdsp5v2/snddev_ecodec.h>
+#include <mach/qdsp5v2/audio_def.h>
+#include <mach/qdsp5v2/voice.h>
 #include <mach/htc_acoustic_7x30.h>
 #include <mach/htc_acdb_7x30.h>
 #include <linux/spi/spi_aic3254.h>

@@ -64,10 +64,10 @@
 //#include <mach/pmic.h>
 #include <mach/rpc_pmapp.h>
 #ifdef CONFIG_MSM7KV2_AUDIO
-#include <mach/qdsp5v2_2x/msm_lpa.h>
-#include <mach/qdsp5v2_2x/aux_pcm.h>
-#include <mach/qdsp5v2_2x/mi2s.h>
-#include <mach/qdsp5v2_2x/audio_dev_ctl.h>
+#include <mach/qdsp5v2/msm_lpa.h>
+#include <mach/qdsp5v2/aux_pcm.h>
+#include <mach/qdsp5v2/mi2s.h>
+#include <mach/qdsp5v2/audio_dev_ctl.h>
 #endif
 #include <mach/htc_battery.h>
 #include <linux/ds2746_battery.h>
@@ -103,8 +103,8 @@
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 #include <mach/bcm_bt_lpm.h>
 #endif
-#include <mach/qdsp5v2_2x/mi2s.h>
-#include <mach/qdsp5v2_2x/audio_dev_ctl.h>
+#include <mach/qdsp5v2/mi2s.h>
+#include <mach/qdsp5v2/audio_dev_ctl.h>
 #include <mach/sdio_al.h>
 #include "smd_private.h"
 #include "board-spade.h"

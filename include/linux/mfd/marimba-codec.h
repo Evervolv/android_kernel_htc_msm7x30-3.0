@@ -28,7 +28,7 @@
 #ifndef __LINUX_MFD_MSM_MARIMBA_CODEC_H
 #define __LINUX_MFD_MSM_MARIMBA_CODEC_H
 
-#include <mach/qdsp5v2_2x/marimba_profile.h>
+#include <mach/qdsp5v2/marimba_profile.h>
 #include <linux/mfd/msm-adie-codec.h>
 
 #if 0

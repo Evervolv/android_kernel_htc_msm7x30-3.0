@@ -100,8 +100,6 @@
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 #include <mach/bcm_bt_lpm.h>
 #endif
-#include <mach/qdsp5v2x/mi2s.h>
-#include <mach/qdsp5v2x/audio_dev_ctl.h>
 #include <mach/sdio_al.h>
 #include "smd_private.h"
 #include "board-glacier.h"

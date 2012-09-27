@@ -128,7 +128,7 @@ static unsigned glacier_wifi_update_nvs(char *str, int add_flag)
 	return 0;
 }
 
-static int __init glacier_wifi_init(void)
+int __init glacier_wifi_init(void)
 {
 	int ret;
 

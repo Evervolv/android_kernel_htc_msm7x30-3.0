@@ -9,7 +9,11 @@
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <linux/skbuff.h>
+#ifdef CONFIG_BCM4329_PURE_ANDROID
 #include <linux/wlan_plat.h>
+#else
+#include <linux/wifi_tiwlan.h>
+#endif
 
 #include "board-glacier.h"
 
@@ -57,13 +61,13 @@ int __init glacier_init_wifi_mem(void)
 {
 	int i;
 
-	for(i=0;( i < WLAN_SKB_BUF_NUM );i++) {
+	for (i = 0 ; (i < WLAN_SKB_BUF_NUM); i++) {
 		if (i < (WLAN_SKB_BUF_NUM/2))
 			wlan_static_skb[i] = dev_alloc_skb(4096);
 		else
 			wlan_static_skb[i] = dev_alloc_skb(8192);
 	}
-	for(i=0;( i < PREALLOC_WLAN_NUMBER_OF_SECTIONS );i++) {
+	for (i = 0 ; (i < PREALLOC_WLAN_NUMBER_OF_SECTIONS); i++) {
 		wifi_mem_array[i].mem_ptr = kmalloc(wifi_mem_array[i].size,
 							GFP_KERNEL);
 		if (wifi_mem_array[i].mem_ptr == NULL)
@@ -77,7 +81,11 @@ static struct resource glacier_wifi_resources[] = {
 		.name		= "bcm4329_wlan_irq",
 		.start		= MSM_GPIO_TO_INT(GLACIER_GPIO_WIFI_IRQ),
 		.end		= MSM_GPIO_TO_INT(GLACIER_GPIO_WIFI_IRQ),
-		.flags          = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
+#ifdef CONFIG_BCM4329_PURE_ANDROID
+		.flags		= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
+#else
+		.flags          = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWEDGE,
+#endif
 	},
 };
 
@@ -85,23 +93,26 @@ static struct wifi_platform_data glacier_wifi_control = {
 	.set_power      = glacier_wifi_power,
 	.set_reset      = glacier_wifi_reset,
 	.set_carddetect = glacier_wifi_set_carddetect,
-	.mem_prealloc	= glacier_wifi_mem_prealloc,
+	.mem_prealloc   = glacier_wifi_mem_prealloc,
+#ifndef CONFIG_BCM4329_PURE_ANDROID
+	.dot11n_enable  = 1,
+#endif
+	//.cscan_enable   = 1,
 };
 
 static struct platform_device glacier_wifi_device = {
-        .name           = "bcm4329_wlan",
-        .id             = 1,
-        .num_resources  = ARRAY_SIZE(glacier_wifi_resources),
-        .resource       = glacier_wifi_resources,
-        .dev            = {
-                .platform_data = &glacier_wifi_control,
-        },
+		.name           = "bcm4329_wlan",
+		.id             = 1,
+		.num_resources  = ARRAY_SIZE(glacier_wifi_resources),
+		.resource       = glacier_wifi_resources,
+		.dev            = {
+				.platform_data = &glacier_wifi_control,
+		},
 };
 
 extern unsigned char *get_wifi_nvs_ram(void);
-extern int wifi_calibration_size_set(void);
 
-static unsigned glacier_wifi_update_nvs(char *str, int add_flag)
+static unsigned glacier_wifi_update_nvs(char *str)
 {
 #define NVS_LEN_OFFSET		0x0C
 #define NVS_DATA_OFFSET		0x40
@@ -113,18 +124,19 @@ static unsigned glacier_wifi_update_nvs(char *str, int add_flag)
 	ptr = get_wifi_nvs_ram();
 	/* Size in format LE assumed */
 	memcpy(&len, ptr + NVS_LEN_OFFSET, sizeof(len));
-	/* if the last byte in NVRAM is 0, trim it */
+
+	/* the last bye in NVRAM is 0, trim it */
 	if (ptr[NVS_DATA_OFFSET + len - 1] == 0)
 		len -= 1;
-	if (add_flag) {
-		strcpy(ptr + NVS_DATA_OFFSET + len, str);
-		len += strlen(str);
-	} else {
-		if (strnstr(ptr + NVS_DATA_OFFSET, str, len))
-			len -= strlen(str);
+
+	if (ptr[NVS_DATA_OFFSET + len - 1] != '\n') {
+		len += 1;
+		ptr[NVS_DATA_OFFSET + len - 1] = '\n';
 	}
+
+	strcpy(ptr + NVS_DATA_OFFSET + len, str);
+	len += strlen(str);
 	memcpy(ptr + NVS_LEN_OFFSET, &len, sizeof(len));
-	wifi_calibration_size_set();
 	return 0;
 }
 
@@ -132,15 +144,12 @@ int __init glacier_wifi_init(void)
 {
 	int ret;
 
-	if (!machine_is_glacier())
-		return 0;
-
-	printk("%s: start\n", __func__);
-	glacier_wifi_update_nvs("sd_oobonly=1\r\n", 0);
-	glacier_wifi_update_nvs("btc_params70=0x32\r\n", 1);
+	printk(KERN_INFO "%s: start\n", __func__);
+	glacier_wifi_update_nvs("sd_oobonly=1\n");
+	glacier_wifi_update_nvs("btc_params80=0\n");
+	glacier_wifi_update_nvs("btc_params6=30\n");
+	glacier_wifi_update_nvs("btc_params70=0x32\n");
 	glacier_init_wifi_mem();
 	ret = platform_device_register(&glacier_wifi_device);
-        return ret;
+	return ret;
 }
-
-late_initcall(glacier_wifi_init);

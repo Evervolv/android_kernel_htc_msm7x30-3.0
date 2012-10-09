@@ -56,6 +56,9 @@
 
 #define MAX_AXI_KHZ 192000
 
+#define ACPU_MIN_UV_MV 700U
+#define ACPU_MAX_UV_MV 1600U
+
 struct clock_state {
 	struct clkctl_acpu_speed	*current_speed;
 	struct mutex			lock;
@@ -565,3 +568,40 @@ static int __init acpuclk_7x30_init(struct acpuclk_soc_data *soc_data)
 struct acpuclk_soc_data acpuclk_7x30_soc_data __initdata = {
 	.init = acpuclk_7x30_init,
 };
+
+#ifdef CONFIG_VDD_SYSFS_INTERFACE
+ssize_t acpuclk_get_vdd_levels_str(char *buf)
+{
+	int i, len = 0;
+	if (buf)
+	{
+		mutex_lock(&drv_state.lock);
+		for (i = 0; acpu_freq_tbl[i].acpu_clk_khz; i++)
+		{
+			len += sprintf(buf + len, "%8u: %4d\n", acpu_freq_tbl[i].acpu_clk_khz, acpu_freq_tbl[i].vdd_mv);
+		}
+		mutex_unlock(&drv_state.lock);
+	}
+	return len;
+}
+
+void acpuclk_set_vdd(unsigned int khz, int vdd)
+{
+	int i;
+	unsigned int new_vdd;
+	vdd = vdd / V_STEP * V_STEP;
+	mutex_lock(&drv_state.lock);
+	for (i = 0; acpu_freq_tbl[i].acpu_clk_khz; i++)
+	{
+		if (khz == 0)
+			new_vdd = min(max((acpu_freq_tbl[i].vdd_mv + vdd), ACPU_MIN_UV_MV), ACPU_MAX_UV_MV);
+		else if (acpu_freq_tbl[i].acpu_clk_khz == khz)
+			new_vdd = min(max((unsigned int)vdd, ACPU_MIN_UV_MV), ACPU_MAX_UV_MV);
+		else continue;
+
+		acpu_freq_tbl[i].vdd_mv = new_vdd;
+		acpu_freq_tbl[i].vdd_raw = VDD_RAW(new_vdd);
+	}
+	mutex_unlock(&drv_state.lock);
+}
+#endif

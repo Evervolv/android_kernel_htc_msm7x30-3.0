@@ -217,5 +217,12 @@ depends on X86
 source "drivers/cpufreq/Kconfig.x86"
 endmenu
 
+config VDD_SYSFS_INTERFACE
+	bool "VDD SYSFS Interface"
+	depends on CPU_FREQ_STAT
+	depends on ARCH_MSM7X30
+	default n
+	help
+	  Creates a sysfs interface for VDD entries
 endif
 endmenu

@@ -1021,20 +1021,32 @@ enum version{
 	VER_UNSUPPORTED = 0xFF
 };
 
-
-static struct vreg *vreg_marimba_1;
 static struct vreg *vreg_marimba_2;
+
+static struct msm_gpio marimba_svlte_config_clock[] = {
+	{ GPIO_CFG(34, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		"MARIMBA_SVLTE_CLOCK_ENABLE" },
+};
+
+static unsigned int msm_marimba_gpio_config_svlte(int gpio_cfg_marimba)
+{
+	if (machine_is_msm8x55_svlte_surf() ||
+		machine_is_msm8x55_svlte_ffa()) {
+		if (gpio_cfg_marimba)
+			gpio_set_value(GPIO_PIN
+				(marimba_svlte_config_clock->gpio_cfg), 1);
+		else
+			gpio_set_value(GPIO_PIN
+				(marimba_svlte_config_clock->gpio_cfg), 0);
+	}
+
+	return 0;
+};
 
 static unsigned int msm_marimba_setup_power(void)
 {
 	int rc;
 
-	rc = vreg_enable(vreg_marimba_1);
-	if (rc) {
-		printk(KERN_ERR "%s: vreg_enable() = %d \n",
-					__func__, rc);
-		goto out;
-	}
 	rc = vreg_enable(vreg_marimba_2);
 	if (rc) {
 		printk(KERN_ERR "%s: vreg_enable() = %d \n",
@@ -1050,11 +1062,6 @@ static void msm_marimba_shutdown_power(void)
 {
 	int rc;
 
-	rc = vreg_disable(vreg_marimba_1);
-	if (rc) {
-		printk(KERN_ERR "%s: return val: %d\n",
-					__func__, rc);
-	}
 	rc = vreg_disable(vreg_marimba_2);
 	if (rc) {
 		printk(KERN_ERR "%s: return val: %d \n",
@@ -1062,154 +1069,109 @@ static void msm_marimba_shutdown_power(void)
 	}
 };
 
+struct vreg *fm_regulator;
+static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
+{
+	int rc;
+	uint32_t irqcfg;
+	const char *id = "FMPW";
+
+	pdata->vreg_s2 = vreg_get(NULL, "s2");
+	if (IS_ERR(pdata->vreg_s2)) {
+		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
+			__func__, PTR_ERR(pdata->vreg_s2));
+		return -1;
+	}
+
+	rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 1300);
+	if (rc < 0) {
+		printk(KERN_ERR "%s: voltage level vote failed (%d)\n",
+			__func__, rc);
+		return rc;
+	}
+
+	rc = vreg_enable(pdata->vreg_s2);
+	if (rc) {
+		printk(KERN_ERR "%s: vreg_enable() = %d \n",
+					__func__, rc);
+		return rc;
+	}
+
+	rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
+					  PMAPP_CLOCK_VOTE_ON);
+	if (rc < 0) {
+		printk(KERN_ERR "%s: clock vote failed (%d)\n",
+			__func__, rc);
+		goto fm_clock_vote_fail;
+	}
+	irqcfg = PCOM_GPIO_CFG(147, 0, GPIO_INPUT, GPIO_NO_PULL,
+					GPIO_CFG_2MA);
+	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
+	if (rc) {
+		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
+				__func__, irqcfg, rc);
+		rc = -EIO;
+		goto fm_gpio_config_fail;
+
+	}
+	return 0;
+fm_gpio_config_fail:
+	pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
+				  PMAPP_CLOCK_VOTE_OFF);
+fm_clock_vote_fail:
+	vreg_disable(pdata->vreg_s2);
+	return rc;
+
+};
+
+static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
+{
+	int rc;
+	const char *id = "FMPW";
+	uint32_t irqcfg = PCOM_GPIO_CFG(147, 0, GPIO_INPUT, GPIO_PULL_UP,
+					GPIO_CFG_2MA);
+	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
+	if (rc) {
+		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
+				__func__, irqcfg, rc);
+	}
+	rc = vreg_disable(pdata->vreg_s2);
+	if (rc) {
+		printk(KERN_ERR "%s: return val: %d \n",
+					__func__, rc);
+	}
+	rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
+					  PMAPP_CLOCK_VOTE_OFF);
+	if (rc < 0)
+		printk(KERN_ERR "%s: clock_vote return val: %d \n",
+						__func__, rc);
+	rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 0);
+	if (rc < 0)
+		printk(KERN_ERR "%s: vreg level vote return val: %d \n",
+						__func__, rc);
+}
+
+static struct marimba_fm_platform_data marimba_fm_pdata = {
+	.fm_setup =  fm_radio_setup,
+	.fm_shutdown = fm_radio_shutdown,
+	.irq = MSM_GPIO_TO_INT(147),
+	.vreg_s2 = NULL,
+	.vreg_xo_out = NULL,
+	.is_fm_soc_i2s_master = false,
+	.config_i2s_gpio = NULL,
+};
+
+
 /* Slave id address for FM/CDC/QMEMBIST
  * Values can be programmed using Marimba slave id 0
  * should there be a conflict with other I2C devices
  * */
-//#define MARIMBA_SLAVE_ID_FM_ADDR	0x2A
+#define MARIMBA_SLAVE_ID_FM_ADDR	0x2A
 #define MARIMBA_SLAVE_ID_CDC_ADDR	0x77
 #define MARIMBA_SLAVE_ID_QMEMBIST_ADDR	0X66
 
-static const char *tsadc_id = "MADC";
-static const char *vregs_tsadc_name[] = {
-	"gp12",
-	"s2",
-};
-static struct vreg *vregs_tsadc[ARRAY_SIZE(vregs_tsadc_name)];
-
-static int marimba_tsadc_power(int vreg_on)
-{
-	int i, rc = 0;
-
-        for (i = 0; i < ARRAY_SIZE(vregs_tsadc_name); i++) {
-          if (!vregs_tsadc[i]) {
-            pr_err("%s: vreg_get %s failed (%d)\n",
-                   __func__, vregs_tsadc_name[i], rc);
-            goto vreg_fail;
-          }
-          
-          rc = vreg_on ? vreg_enable(vregs_tsadc[i]) :
-            vreg_disable(vregs_tsadc[i]);
-          if (rc < 0) {
-            pr_err("%s: vreg %s %s failed (%d)\n",
-                   __func__, vregs_tsadc_name[i],
-                   vreg_on ? "enable" : "disable", rc);
-            goto vreg_fail;
-          }
-        }
-        /* If marimba vote for DO buffer */
-        rc = pmapp_clock_vote(tsadc_id, PMAPP_CLOCK_ID_DO,
-                              vreg_on ? PMAPP_CLOCK_VOTE_ON : PMAPP_CLOCK_VOTE_OFF);
-        if (rc)	{
-          pr_err("%s: unable to %svote for d0 clk\n",
-                 __func__, vreg_on ? "" : "de-");
-          goto do_vote_fail;
-        }
-        msleep(5); /* ensure power is stable */
-        
-        return 0;
-        
-do_vote_fail:
-vreg_fail:
-	while (i) {
-          if (vreg_on) {
-            vreg_disable(vregs_tsadc[--i]);
-          } else {
-            vreg_enable(vregs_tsadc[--i]);
-          }
-	}
-
-	return rc;
-}
-
-static int marimba_tsadc_vote(int vote_on)
-{
-	int rc = 0;
-
-        int level = vote_on ? 1300 : 0;
-        rc = pmapp_vreg_level_vote(tsadc_id, PMAPP_VREG_S2, level);
-        if (rc < 0)
-          pr_err("%s: vreg level %s failed (%d)\n",
-                 __func__, vote_on ? "on" : "off", rc);
-        
-        return rc;
-}
-
-static int marimba_tsadc_init(void)
-{
-	int i, rc = 0;
-
-        for (i = 0; i < ARRAY_SIZE(vregs_tsadc_name); i++) {
-          vregs_tsadc[i] = vreg_get(NULL, vregs_tsadc_name[i]);
-          if (IS_ERR(vregs_tsadc[i])) {
-            pr_err("%s: vreg get %s failed (%ld)\n",
-                   __func__, vregs_tsadc_name[i],
-                   PTR_ERR(vregs_tsadc[i]));
-            rc = PTR_ERR(vregs_tsadc[i]);
-            goto vreg_get_fail;
-          }
-        }
-
-	return 0;
-
-vreg_get_fail:
-	while (i) {
-          vreg_put(vregs_tsadc[--i]);
-	}
-	return rc;
-}
-
-static int marimba_tsadc_exit(void)
-{
-	int i, rc = 0;
-
-        for (i = 0; i < ARRAY_SIZE(vregs_tsadc_name); i++) {
-          if (vregs_tsadc[i])
-            vreg_put(vregs_tsadc[i]);
-        }
-        rc = pmapp_vreg_level_vote(tsadc_id, PMAPP_VREG_S2, 0);
-        if (rc < 0)
-          pr_err("%s: vreg level off failed (%d)\n",
-                 __func__, rc);
-
-	return rc;
-}
-
-
-static struct msm_ts_platform_data msm_ts_data = {
-	.min_x          = 0,
-	.max_x          = 4096,
-	.min_y          = 0,
-	.max_y          = 4096,
-	.min_press      = 0,
-	.max_press      = 255,
-	.inv_x          = 4096,
-	.inv_y          = 4096,
-	.can_wakeup	= false,
-};
-
-static struct marimba_tsadc_platform_data marimba_tsadc_pdata = {
-	.marimba_tsadc_power =  marimba_tsadc_power,
-	.init		     =  marimba_tsadc_init,
-	.exit		     =  marimba_tsadc_exit,
-	.level_vote	     =  marimba_tsadc_vote,
-	.tsadc_prechg_en = true,
-	.can_wakeup	= false,
-	.setup = {
-		.pen_irq_en	=	true,
-		.tsadc_en	=	true,
-	},
-	.params2 = {
-		.input_clk_khz		=	2400,
-		.sample_prd		=	TSADC_CLK_3,
-	},
-	.params3 = {
-		.prechg_time_nsecs	=	6400,
-		.stable_time_nsecs	=	6400,
-		.tsadc_test_mode	=	0,
-	},
-	.tssc_data = &msm_ts_data,
-};
+#define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
+#define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
 
 static struct vreg *vreg_codec_s4;
 static int msm_marimba_codec_power(int vreg_on)
@@ -1251,26 +1213,21 @@ static struct marimba_codec_platform_data mariba_codec_pdata = {
 };
 
 static struct marimba_platform_data marimba_pdata = {
-  //.slave_id[MARIMBA_SLAVE_ID_FM]       = MARIMBA_SLAVE_ID_FM_ADDR,
+	.slave_id[MARIMBA_SLAVE_ID_FM]       = MARIMBA_SLAVE_ID_FM_ADDR,
 	.slave_id[MARIMBA_SLAVE_ID_CDC]	     = MARIMBA_SLAVE_ID_CDC_ADDR,
 	.slave_id[MARIMBA_SLAVE_ID_QMEMBIST] = MARIMBA_SLAVE_ID_QMEMBIST_ADDR,
+	.slave_id[SLAVE_ID_BAHAMA_FM]        = BAHAMA_SLAVE_ID_FM_ADDR,
+	.slave_id[SLAVE_ID_BAHAMA_QMEMBIST]  = BAHAMA_SLAVE_ID_QMEMBIST_ADDR,
 	.marimba_setup = msm_marimba_setup_power,
 	.marimba_shutdown = msm_marimba_shutdown_power,
-        //	.marimba_gpio_config = msm_marimba_gpio_config_svlte,
-        //	.fm = &marimba_fm_pdata,
-        .tsadc = &marimba_tsadc_pdata,
+	.marimba_gpio_config = msm_marimba_gpio_config_svlte,
+	.fm = &marimba_fm_pdata,
 	.codec = &mariba_codec_pdata,
-        .tsadc_ssbi_adap = MARIMBA_SSBI_ADAP,
+	.tsadc_ssbi_adap = MARIMBA_SSBI_ADAP,
 };
 
 static void __init glacier_init_marimba(void)
 {
-	vreg_marimba_1 = vreg_get(NULL, "s2");
-	if (IS_ERR(vreg_marimba_1)) {
-		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
-			__func__, PTR_ERR(vreg_marimba_1));
-		return;
-	}
 	vreg_marimba_2 = vreg_get(NULL, "gp16");
 	if (IS_ERR(vreg_marimba_2)) {
 		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
@@ -1379,21 +1336,21 @@ static struct platform_device msm_aux_pcm_device = {
 	.resource       = msm_aux_pcm_resources,
 };
 
-static struct platform_device msm_aictl_device = {
+struct platform_device msm_aictl_device = {
 	.name = "audio_interct",
 	.id   = 0,
 	.num_resources = ARRAY_SIZE(msm_aictl_resources),
 	.resource = msm_aictl_resources,
 };
 
-static struct platform_device msm_mi2s_device = {
+struct platform_device msm_mi2s_device = {
 	.name = "mi2s",
 	.id   = 0,
 	.num_resources = ARRAY_SIZE(msm_mi2s_resources),
 	.resource = msm_mi2s_resources,
 };
 
-static struct platform_device msm_lpa_device = {
+struct platform_device msm_lpa_device = {
 	.name = "lpa",
 	.id   = 0,
 	.num_resources = ARRAY_SIZE(msm_lpa_resources),
@@ -1402,7 +1359,13 @@ static struct platform_device msm_lpa_device = {
 		.platform_data = &lpa_pdata,
 	},
 };
+
 #endif
+
+struct platform_device htc_drm = {
+	.name = "htcdrm",
+	.id = 0,
+};
 
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
 	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
@@ -1432,10 +1395,7 @@ static struct platform_device msm_lpa_device = {
 
 static unsigned int dec_concurrency_table[] = {
 	/* Audio LP */
-	0,
-	(DEC3_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
-	(DEC2_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
-	(DEC1_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	0, 0, 0, 0,
 	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_TUNNEL)|(1<<MSM_ADSP_MODE_LP)|
 	(1<<MSM_ADSP_OP_DM)),
 
@@ -2376,13 +2336,21 @@ void config_glacier_usb_id_gpios(bool output)
 	}
 }
 
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
+#define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
+int64_t glacier_get_usbid_adc(void)
+{
+	uint32_t adc_value = 0xffffffff;
+/*
+	htc_get_usb_accessory_adc_level(&adc_value);
+	adc_value = PM8058ADC_16BIT(adc_value);*/
+	return adc_value;
+}
+
 static struct cable_detect_platform_data cable_detect_pdata = {
 	.detect_type 		= CABLE_TYPE_ID_PIN,
 	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID1_PIN,
 	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
-	.dock_detect = 1, /* detect desk dock */
-	.dock_pin_gpio  = GLACIER_GPIO_DOCK_PIN,
+	.get_adc_cb		= glacier_get_usbid_adc,
 };
 
 static struct platform_device cable_detect_device = {
@@ -2392,7 +2360,6 @@ static struct platform_device cable_detect_device = {
 		.platform_data = &cable_detect_pdata,
 	},
 };
-#endif
 
 static struct msm_gpio msm_i2c_gpios_hw[] = {
 	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
@@ -2810,7 +2777,6 @@ static struct mmc_platform_data msm7x30_sdc4_data = {
 #endif
 	.msmsdcc_fmin	= 144000,
 	.msmsdcc_fmid	= 25000000,
-	//	.msmsdcc_fmax	= 49152000,
 	.msmsdcc_fmax	= 50000000,
 	.nonremovable	= 0,
 	.slot_type     = &glacier_sdc4_slot_type,
@@ -3067,7 +3033,7 @@ static struct platform_device *devices[] __initdata = {
         &msm_camera_sensor_s5k4e1gx,
 #endif
 #ifdef CONFIG_MT9V113
-		&msm_camera_sensor_mt9v113, /* 2nd CAM */
+	&msm_camera_sensor_mt9v113, /* 2nd CAM */
 #endif
 
         &htc_battery_pdev,
@@ -3082,9 +3048,8 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
-		&cable_detect_device,
-#endif
+	&htc_drm,
+	&cable_detect_device,
 };
 
 static void __init glacier_init(void)
@@ -3258,14 +3223,6 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
 
-static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
-static int __init pmem_audio_size_setup(char *p)
-{
-	pmem_audio_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_audio_size", pmem_audio_size_setup);
-
 static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -3293,7 +3250,6 @@ static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	size_pmem_device(&android_pmem_adsp_pdata, 0, pmem_adsp_size);
-	size_pmem_device(&android_pmem_audio_pdata, 0, pmem_audio_size);
 	size_pmem_device(&android_pmem_pdata, 0, pmem_sf_size);
 	msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
 #endif
@@ -3311,7 +3267,6 @@ static void __init reserve_pmem_memory(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
-	reserve_memory_for(&android_pmem_audio_pdata);
 	reserve_memory_for(&android_pmem_pdata);
 #endif
 }

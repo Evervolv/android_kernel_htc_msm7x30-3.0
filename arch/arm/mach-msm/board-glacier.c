@@ -577,7 +577,7 @@ static struct akm8975_platform_data compass_platform_data = {
 };
 
 static struct tps65200_platform_data tps65200_data = {
-	.charger_check = 0,
+	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_GPIO_CHG_INT)),
 };
 
 static struct a1026_platform_data a1026_data = {

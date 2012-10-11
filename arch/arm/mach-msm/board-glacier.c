@@ -1362,11 +1362,6 @@ struct platform_device msm_lpa_device = {
 
 #endif
 
-struct platform_device htc_drm = {
-	.name = "htcdrm",
-	.id = 0,
-};
-
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
 	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
 	(1<<MSM_ADSP_CODEC_WMAPRO)|(1<<MSM_ADSP_CODEC_AMRWB)| \
@@ -2314,8 +2309,6 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resources,
 };
 
-#define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
-
 static uint32_t usb_ID_PIN_input_table[] = {
 	GPIO_CFG(GLACIER_GPIO_USB_ID1_PIN, 0, GPIO_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
@@ -2336,21 +2329,13 @@ void config_glacier_usb_id_gpios(bool output)
 	}
 }
 
-#define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
-int64_t glacier_get_usbid_adc(void)
-{
-	uint32_t adc_value = 0xffffffff;
-/*
-	htc_get_usb_accessory_adc_level(&adc_value);
-	adc_value = PM8058ADC_16BIT(adc_value);*/
-	return adc_value;
-}
-
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 static struct cable_detect_platform_data cable_detect_pdata = {
 	.detect_type 		= CABLE_TYPE_ID_PIN,
 	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID1_PIN,
 	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
-	.get_adc_cb		= glacier_get_usbid_adc,
+	.dock_detect = 1, /* detect desk dock */
+	.dock_pin_gpio  = GLACIER_GPIO_DOCK_PIN,
 };
 
 static struct platform_device cable_detect_device = {
@@ -2360,6 +2345,7 @@ static struct platform_device cable_detect_device = {
 		.platform_data = &cable_detect_pdata,
 	},
 };
+#endif
 
 static struct msm_gpio msm_i2c_gpios_hw[] = {
 	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
@@ -3048,8 +3034,9 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
-	&htc_drm,
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 	&cable_detect_device,
+#endif
 };
 
 static void __init glacier_init(void)

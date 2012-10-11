@@ -2481,10 +2481,11 @@ static void __init qup_device_i2c_init(void)
 }
 
 #ifdef CONFIG_I2C_SSBI
+/*
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi6_pdata = {
 	.rsl_id = "D:PMIC_SSBI",
 };
-
+*/
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 	.rsl_id = "D:CODEC_SSBI",
 };
@@ -2976,7 +2977,7 @@ static struct platform_device *devices[] __initdata = {
         &msm_device_ssbi_pmic1,
 #endif
 #ifdef CONFIG_I2C_SSBI
-        &msm_device_ssbi6,
+        /* &msm_device_ssbi6, */
         &msm_device_ssbi7,
 #endif
         &android_pmem_device,
@@ -3143,7 +3144,7 @@ static void __init glacier_init(void)
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 				ARRAY_SIZE(msm_camera_boardinfo));
 #ifdef CONFIG_I2C_SSBI
-	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;
+	/* msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata; */
 	msm_device_ssbi7.dev.platform_data = &msm_i2c_ssbi7_pdata;
 #endif
 	pm8058_gpios_init();

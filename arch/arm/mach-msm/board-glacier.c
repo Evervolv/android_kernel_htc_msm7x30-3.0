@@ -1023,26 +1023,6 @@ enum version{
 
 static struct vreg *vreg_marimba_2;
 
-static struct msm_gpio marimba_svlte_config_clock[] = {
-	{ GPIO_CFG(34, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-		"MARIMBA_SVLTE_CLOCK_ENABLE" },
-};
-
-static unsigned int msm_marimba_gpio_config_svlte(int gpio_cfg_marimba)
-{
-	if (machine_is_msm8x55_svlte_surf() ||
-		machine_is_msm8x55_svlte_ffa()) {
-		if (gpio_cfg_marimba)
-			gpio_set_value(GPIO_PIN
-				(marimba_svlte_config_clock->gpio_cfg), 1);
-		else
-			gpio_set_value(GPIO_PIN
-				(marimba_svlte_config_clock->gpio_cfg), 0);
-	}
-
-	return 0;
-};
-
 static unsigned int msm_marimba_setup_power(void)
 {
 	int rc;
@@ -1220,7 +1200,6 @@ static struct marimba_platform_data marimba_pdata = {
 	.slave_id[SLAVE_ID_BAHAMA_QMEMBIST]  = BAHAMA_SLAVE_ID_QMEMBIST_ADDR,
 	.marimba_setup = msm_marimba_setup_power,
 	.marimba_shutdown = msm_marimba_shutdown_power,
-	.marimba_gpio_config = msm_marimba_gpio_config_svlte,
 	.fm = &marimba_fm_pdata,
 	.codec = &mariba_codec_pdata,
 	.tsadc_ssbi_adap = MARIMBA_SSBI_ADAP,

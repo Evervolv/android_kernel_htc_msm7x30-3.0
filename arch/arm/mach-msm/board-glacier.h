@@ -27,10 +27,10 @@
 #define PM8058_uP_PM_TO_SYS(pm_gpio)	   (pm_gpio + FIRST_BOARD_IRQ + NR_BOARD_IRQS)
 
 #define MSM_LINUX_BASE1		0x04000000
-#define MSM_LINUX_SIZE1		0x0C000000
+#define MSM_LINUX_SIZE1		0x0BC00000
 #define MSM_LINUX_BASE2		0x20000000
-#define MSM_LINUX_SIZE2		0x10000000
-#define MSM_MEM_256MB_OFFSET	0x10000000
+#define MSM_LINUX_SIZE2		0x0A400000
+#define MSM_MEM_256MB_OFFSET 	0x10000000
 
 #define MSM_GPU_MEM_BASE	0x00100000
 #define MSM_GPU_MEM_SIZE	0x00300000
@@ -38,11 +38,7 @@
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE	0x00100000
 
-#define MSM_PMEM_AUDIO_SIZE	0x00200000
-
-#define MSM_PMEM_ADSP_SIZE	0x01D00000
-
-//#define MSM_PMEM_ADSP2_SIZE     0x002C0000
+#define MSM_PMEM_ADSP_SIZE	0x03200000
 
 #define PMEM_KERNEL_EBI1_SIZE   0x00700000
 
@@ -184,3 +180,4 @@ void __init glacier_microp_init(void);
 /*glacier and panache will share one panel code */
 int __init glacier_init_panel(void);
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_GLACIER_H */
+

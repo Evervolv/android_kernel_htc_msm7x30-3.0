@@ -638,16 +638,16 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 		vreg_enable(OJ_2V85);
 		vreg_enable(V_LCMIO_2V8);
 		vreg_enable(V_LCMIO_1V8);
-
 		gpio_set_value(GLACIER_LCD_RSTz, 1);
-		hr_msleep(13);
+		hr_msleep(1);
 		gpio_set_value(GLACIER_LCD_RSTz, 0);
-		hr_msleep(13);
+		hr_msleep(1);
 		gpio_set_value(GLACIER_LCD_RSTz, 1);
-		hr_msleep(13);
+		hr_msleep(15);
 
 	} else {
 		gpio_set_value(GLACIER_LCD_RSTz, 0);
+		hr_msleep(10);
 		vreg_disable(V_LCMIO_2V8);
 		vreg_disable(V_LCMIO_1V8);
 		/* OJ_2V85*/

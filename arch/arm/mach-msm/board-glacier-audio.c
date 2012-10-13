@@ -273,6 +273,7 @@ static struct acoustic_ops acoustic = {
 
 void __init glacier_audio_init(void)
 {
+	int rc;
 #if 0
 	static struct pm_gpio audio_pwr = {
 		.direction      = PM_GPIO_DIR_OUT,

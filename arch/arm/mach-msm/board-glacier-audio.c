@@ -273,7 +273,7 @@ static struct acoustic_ops acoustic = {
 
 void __init glacier_audio_init(void)
 {
-
+#if 0
 	static struct pm_gpio audio_pwr = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
@@ -283,7 +283,7 @@ void __init glacier_audio_init(void)
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.vin_sel        = 6,
 	};
-
+#endif
 	mutex_init(&bt_sco_lock);
 #ifdef CONFIG_MSM7KV2_AUDIO
 	htc_7x30_register_analog_ops(&ops);

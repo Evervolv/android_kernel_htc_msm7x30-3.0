@@ -291,9 +291,28 @@ void __init glacier_audio_init(void)
 	htc_7x30_register_voice_ops(&vops);
 	acoustic_register_ops(&acoustic);
 #endif
-    pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), &audio_pwr);
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), &audio_pwr);
-
+	rc = gpio_request(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), "AUD_HP_EN");
+	if (rc) {
+		pr_aud_err("%s:Failed to request GLACIER_AUD_SPK_ENO\n", __func__);
+	}else{
+		rc = gpio_direction_output(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), 0);
+		if (rc < 0) {
+			pr_aud_err("%s: request GLACIER_AUD_SPK_ENO gpio direction failed\n", __func__);
+		}
+	}
+	
+	rc = gpio_request(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), "AUD_HP_EN");
+	if (rc) {
+		pr_aud_err("%s:Failed to request GLACIER_AUD_HP_EN GPIO\n", __func__);
+	}else{
+		rc = gpio_direction_output(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), 0);
+		if (rc < 0) {
+			pr_aud_err("%s: request GLACIER_AUD_HP_EN gpio direction failed\n", __func__);
+		}
+	}
+        //pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), &audio_pwr);
+	//pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), &audio_pwr);
+	mdelay(1);
 	mutex_lock(&bt_sco_lock);
 	config_gpio_table(aux_pcm_gpio_off, ARRAY_SIZE(aux_pcm_gpio_off));
 	gpio_set_value(GLACIER_GPIO_BT_PCM_OUT, 0);

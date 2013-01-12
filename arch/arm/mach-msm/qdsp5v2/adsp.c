@@ -310,7 +310,7 @@ int __msm_adsp_write(struct msm_adsp_module *module, unsigned dsp_queue_addr,
 		if (cnt > 50) {
 			pr_aud_err("timeout waiting for DSP write ready\n");
 			ret_status = -EIO;
-			BUG();
+//			BUG();
 			goto fail;
 		}
 		MM_DBG("waiting for DSP write ready\n");
@@ -348,7 +348,7 @@ int __msm_adsp_write(struct msm_adsp_module *module, unsigned dsp_queue_addr,
 		if (cnt > 2500) {
 			pr_aud_err("timeout waiting for adsp ack\n");
 			ret_status = -EIO;
-			BUG();
+//			BUG();
 			goto fail;
 		}
 		udelay(2);

@@ -45,7 +45,7 @@ obj-$(CONFIG_MACH_BLISS) += s5k4e5yx.o s5k4e5yx_reg_bls.o
 obj-$(CONFIG_MACH_BLISSC) += s5k4e5yx.o s5k4e5yx_reg_bls.o
 obj-$(CONFIG_MACH_PRIMOU) += s5k4e5yx.o s5k4e5yx_reg_pro.o
 obj-$(CONFIG_MACH_PRIMOC) += s5k4e5yx.o s5k4e5yx_reg_pro.o
-obj-$(CONFIG_MACH_KINGDOM) += s5k4e5yx.o s5k4e5yx_reg.o
+obj-$(CONFIG_MACH_KINGDOM) += s5k4e5yx.o s5k4e5yx_reg_kin.o
 endif
 
 ifdef CONFIG_S5K6AAFX

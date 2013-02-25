@@ -543,13 +543,6 @@ config MACH_PRIMOC
        depends on ARCH_MSM7X30
        default n
        bool "Primoc"
-       select ARCH_SPARSEMEM_ENABLE
-       select MEMORY_HOTPLUG
-       select MEMORY_HOTREMOVE
-       select ARCH_ENABLE_MEMORY_HOTPLUG
-       select ARCH_ENABLE_MEMORY_HOTREMOVE
-       select ARCH_MEMORY_PROBE
-       select ARCH_MEMORY_REMOVE
        help
          Support for the Qualcomm Primoc board.
 
@@ -2272,6 +2265,7 @@ config MSM_RPC_VIBRATOR
 	  Enable the vibrator support on MSM over RPC. The vibrator
 	  is connected on the PMIC. Say Y if you want to enable this
 	  feature.
+
 config RPC_VER_60001
 	bool "rpc ver 60001"
 	depends on MSM_ONCRPCROUTER

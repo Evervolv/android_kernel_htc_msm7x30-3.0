@@ -91,10 +91,6 @@ static int glacier_shrink_pwm(int brightness, int user_def,
 		int user_min, int user_max, int panel_def,
 		int panel_min, int panel_max)
 {
-	if (brightness < PWM_USER_DIM) {
-		return 0;
-	}
-
 	if (brightness < user_min) {
 		return panel_min;
 	}

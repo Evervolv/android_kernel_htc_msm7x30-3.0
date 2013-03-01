@@ -332,6 +332,8 @@ static int elan_ktf2k_diag_open(struct i2c_client *client, uint8_t diag_command)
 
 static int elan_ktf2k_diag_open_v2(struct i2c_client *client, uint8_t diag_command)
 {
+	uint8_t i = 0;
+
 	struct test_mode_cmd_open_v2 cmd[] = {
 		{
 			.cmd1 = {HELLO_PKT, HELLO_PKT, HELLO_PKT, HELLO_PKT},
@@ -354,7 +356,6 @@ static int elan_ktf2k_diag_open_v2(struct i2c_client *client, uint8_t diag_comma
 				0x00, 0x00, 0x00, 0x00, 0x00},
 		},
 	};
-	uint8_t i;
 
 	if (diag_command == TEST_MODE_DV)
 		i = 0;

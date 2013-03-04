@@ -466,6 +466,13 @@ config MACH_GLACIER
        help
          Support for the Qualcomm Glacier board.
 
+config MACH_SPEEDY
+       depends on ARCH_MSM7X30
+       default n
+       bool "Speedy"
+       help
+         Support for the Qualcomm Speedy board.
+
 config MACH_SPADE
        depends on ARCH_MSM7X30
        default n

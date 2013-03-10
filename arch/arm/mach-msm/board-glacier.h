@@ -171,6 +171,7 @@ extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
 extern int panel_type;
 
+unsigned int glacier_get_engineerid(void);
 int glacier_init_mmc(unsigned int sys_rev);
 void __init glacier_audio_init(void);
 int __init glacier_init_keypad(void);

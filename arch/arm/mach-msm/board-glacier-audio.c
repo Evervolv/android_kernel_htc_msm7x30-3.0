@@ -50,23 +50,23 @@ static struct q5v2_hw_info_percentage q5v2_audio_hw[Q5V2_HW_COUNT] = {
 	[Q5V2_HW_HANDSET] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-1600, -1100, -600, -200, 200, 400, 0, 0, 0, 0},
+			{-1600, -1100, -600, -200, 200, 500, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-1600, -1100, -600, -200, 200, 400, 0, 0, 0, 0},
+			{-1600, -1100, -600, -250, 250, 500, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_HEADSET] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-1100, -700, -300, 100, 500, 900, 0, 0, 0, 0},
+			{-1100, -700, -300, 100, 625, 1125, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-1100, -700, -300, 100, 500, 900, 0, 0, 0, 0},
+			{-1100, -700, -300, 100, 625, 1125, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_SPEAKER] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-400, -100, 200, 500, 800, 1100, 0, 0, 0, 0},
+			{-400, -100, 200, 625, 1000, 1375, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-400, -100, 200, 500, 800, 1100, 0, 0, 0, 0},
+			{-400, -100, 200, 625, 1000, 1375, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_BT_SCO] = {
 		.max_step = 6,
@@ -92,39 +92,31 @@ static struct q5v2_hw_info_percentage q5v2_audio_hw[Q5V2_HW_COUNT] = {
 	[Q5V2_HW_USB_HS] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
+			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
+			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_HAC] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
+			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
+			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
 	},
 };
 
 static unsigned aux_pcm_gpio_on[] = {
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_OUT, 1, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_IN, 1, GPIO_CFG_INPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 1, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 1, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_OUT, 1, GPIO_CFG_OUTPUT,	GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_IN, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 1, GPIO_CFG_OUTPUT,	GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
 static unsigned aux_pcm_gpio_off[] = {
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_OUT, 0, GPIO_CFG_OUTPUT,
-			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_IN, 0, GPIO_CFG_INPUT,
-                      GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 0, GPIO_CFG_OUTPUT,
-			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-  GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 0, GPIO_CFG_OUTPUT,
-                      GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_OUT, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_IN, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
 
 void glacier_snddev_poweramp_on(int en)
@@ -193,20 +185,20 @@ void glacier_snddev_hs_spk_pamp_on(int en)
 
 void glacier_snddev_imic_pamp_on(int en)
 {
+	unsigned int engineerID = glacier_get_engineerid();
 	pr_aud_info("%s: %d\n", __func__, en);
 	if (en)
 		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_ALWAYS);
 	else
 		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_OFF);
-}
 
-void glacier_snddev_emic_pamp_on(int en)
-{
-	pr_aud_info("%s %d\n", __func__, en);
-	if (en)
-		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_ALWAYS);
-	else
-		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_OFF);
+	/* enable/disable back mic */
+	if ((engineerID & 0x4) == 0) {
+		if (en)
+			pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_ALWAYS);
+		else
+			pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_OFF);
+	}
 }
 
 int glacier_get_rx_vol(uint8_t hw, int network, int level)
@@ -235,12 +227,33 @@ void glacier_mic_bias_enable(int en, int shift)
 
 int glacier_support_audience(void)
 {
-	return 0;
+	unsigned int engineerID = glacier_get_engineerid();
+	pr_aud_info("%s: engineerid: %x", __func__, engineerID);
+	/*Bit2:
+	0: with audience.
+	1: without audience*/
+	return engineerID & 0x4 ? 0 : 1;
 }
 
 int glacier_support_back_mic(void)
 {
-	return 0;
+	return glacier_support_audience();
+}
+
+void glacier_mic_disable(int mic)
+{
+	switch (mic) {
+	case 0: /* main mic */
+		pr_aud_info("%s: disable main mic\n", __func__);
+		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_OFF);
+		break;
+	case 1: /* back mic */
+		pr_aud_info("%s: disable back mic\n", __func__);
+		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_OFF);
+		break;
+	default:
+		break;
+	}
 }
 
 static struct q5v2audio_analog_ops ops = {
@@ -251,7 +264,6 @@ static struct q5v2audio_analog_ops ops = {
 	.headset_speaker_enable	= glacier_snddev_hs_spk_pamp_on,
 	.bt_sco_enable = glacier_snddev_bt_sco_pamp_on,
 	.int_mic_enable = glacier_snddev_imic_pamp_on,
-	.ext_mic_enable = glacier_snddev_emic_pamp_on,
 	.fm_headset_enable = glacier_snddev_hsed_pamp_on,
 	.fm_speaker_enable = glacier_snddev_poweramp_on,
 };
@@ -268,6 +280,7 @@ static struct acoustic_ops acoustic = {
 	.enable_mic_bias = glacier_mic_bias_enable,
 	.support_audience = glacier_support_audience,
 	.support_back_mic = glacier_support_back_mic,
+	.mic_disable = glacier_mic_disable,
 	.mute_headset_amp = glacier_snddev_hsed_pamp_on,
 };
 
@@ -291,7 +304,7 @@ void __init glacier_audio_init(void)
 	htc_7x30_register_voice_ops(&vops);
 	acoustic_register_ops(&acoustic);
 #endif
-    pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), &audio_pwr);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), &audio_pwr);
 	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), &audio_pwr);
 
 	mutex_lock(&bt_sco_lock);

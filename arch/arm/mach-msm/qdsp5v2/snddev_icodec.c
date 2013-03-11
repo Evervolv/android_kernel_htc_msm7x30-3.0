@@ -284,7 +284,6 @@ static int snddev_icodec_open_rx(struct snddev_icodec_state *icodec)
 	struct snddev_icodec_drv_state *drv = &snddev_icodec_drv;
 	struct lpa_codec_config lpa_config;
 
-	printk("%s(): +++\n", __func__);
 	wake_lock(&drv->rx_idlelock);
 //HTC_AUD_START
 #ifndef  CONFIG_CODEC_AIC3008
@@ -382,7 +381,6 @@ static int snddev_icodec_open_rx(struct snddev_icodec_state *icodec)
 	icodec->enabled = 1;
 
 	wake_unlock(&drv->rx_idlelock);
-	printk("%s(): ---\n", __func__);
 	return 0;
 
 error_afe:
@@ -412,7 +410,6 @@ error_invalid_freq:
 	pr_aud_err("%s: encounter error\n", __func__);
 
 	wake_unlock(&drv->rx_idlelock);
-	printk("%s(): ---\n", __func__);
 //HTC_AUD_START
 #endif
 //HTC_AUD_END
@@ -425,7 +422,6 @@ static int snddev_icodec_open_tx(struct snddev_icodec_state *icodec)
 	struct msm_afe_config afe_config;
 	struct snddev_icodec_drv_state *drv = &snddev_icodec_drv;
 
-	printk("%s(): +++\n", __func__);
 	wake_lock(&drv->tx_idlelock);
 
 	/* Reuse pamp_on for TX platform-specific setup  */
@@ -494,7 +490,6 @@ static int snddev_icodec_open_tx(struct snddev_icodec_state *icodec)
 	icodec->enabled = 1;
 
 	wake_unlock(&drv->tx_idlelock);
-	printk("%s(): ---\n", __func__);
 	return 0;
 
 error_afe:
@@ -522,7 +517,6 @@ error_invalid_freq:
 	pr_aud_err("%s: encounter error\n", __func__);
 
 	wake_unlock(&drv->tx_idlelock);
-	printk("%s(): ---\n", __func__);
 //HTC_AUD_START
 #endif
 //HTC_AUD_END
@@ -1261,7 +1255,6 @@ static int __init snddev_icodec_init(void)
 	s32 rc;
 	struct snddev_icodec_drv_state *icodec_drv = &snddev_icodec_drv;
 
-	printk("%s(): +++\n", __func__);
 	rc = platform_driver_register(&snddev_icodec_driver);
 	if (IS_ERR_VALUE(rc))
 		goto error_platform_driver;
@@ -1315,7 +1308,6 @@ static int __init snddev_icodec_init(void)
 			"snddev_tx_idle");
 	wake_lock_init(&icodec_drv->rx_idlelock, WAKE_LOCK_IDLE,
 			"snddev_rx_idle");
-	printk("%s(): ---\n", __func__);
 	return 0;
 
 error_lpa_p_clk:
@@ -1335,7 +1327,6 @@ error_rx_mclk:
 error_platform_driver:
 
 	pr_aud_err("%s: encounter error\n", __func__);
-	printk("%s(): err\n", __func__);
 	return -ENODEV;
 }
 

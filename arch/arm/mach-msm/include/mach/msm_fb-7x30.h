@@ -223,6 +223,7 @@ struct msm_lcdc_panel_ops {
 	int	(*init)(struct msm_lcdc_panel_ops *);
 	int	(*uninit)(struct msm_lcdc_panel_ops *);
 	int	(*blank)(struct msm_lcdc_panel_ops *);
+	int	(*mdp_color_enhance)(void);
 	int	(*unblank)(struct msm_lcdc_panel_ops *);
 	int	(*shutdown)(struct msm_lcdc_panel_ops *);
 #ifdef CONFIG_PANEL_SELF_REFRESH

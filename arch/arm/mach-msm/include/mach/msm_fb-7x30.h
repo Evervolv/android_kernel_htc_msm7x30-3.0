@@ -377,10 +377,6 @@ struct msmfb_info {
 
 	struct early_suspend earlier_suspend;
 	struct early_suspend early_suspend;
-#ifdef CONFIG_HTC_ONMODE_CHARGING
-	struct early_suspend onchg_earlier_suspend;
-	struct early_suspend onchg_suspend;
-#endif
 	struct wake_lock idle_lock;
 	spinlock_t update_lock;
 	struct mutex panel_init_lock;

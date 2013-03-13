@@ -1952,12 +1952,6 @@ config HTC_HEADSET_8X60
 	help
 	  Provides support of HTC 8X60 headset detection.
 
-config HTC_ONMODE_CHARGING
-	bool "On Mode Charging Icon Support"
-	default n
-	help
-		support on mode charing icon
-
 config SMD_OFFSET_TCXO_STAT
 	depends on MSM_SMD
 	hex "SMD offset of total TCXO-off time"

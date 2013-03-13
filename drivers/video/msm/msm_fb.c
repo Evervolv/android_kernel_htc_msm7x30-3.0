@@ -554,61 +554,8 @@ static void msmfb_resume_handler(struct early_suspend *h)
 {
 	struct msmfb_info *msmfb = container_of(h, struct msmfb_info,
 					early_suspend);
-#ifdef CONFIG_HTC_ONMODE_CHARGING
-	if (msmfb->fb_resumed == 1) {
-		DLOG(SUSPEND_RESUME, "fb is resumed by onchg. skip resume\n");
-		return;
-	}
-#endif
 	msmfb_resume(msmfb);
 }
-
-#ifdef CONFIG_HTC_ONMODE_CHARGING
-static void msmfb_onchg_earlier_suspend(struct early_suspend *h)
-{
-	struct msmfb_info *msmfb = container_of(h, struct msmfb_info,
-						onchg_earlier_suspend);
-	struct msm_panel_data *panel = msmfb->panel;
-	unsigned long irq_flags = 0;
-
-	mutex_lock(&msmfb->panel_init_lock);
-	msmfb->sleeping = SLEEPING;
-	wake_up(&msmfb->frame_wq);
-	spin_lock_irqsave(&msmfb->update_lock, irq_flags);
-	spin_unlock_irqrestore(&msmfb->update_lock, irq_flags);
-	wait_event_timeout(msmfb->frame_wq,
-			   msmfb->frame_requested == msmfb->frame_done, HZ/10);
-#ifndef CONFIG_MSM_MDP40
-	mdp->dma(mdp, virt_to_phys(msmfb->black), 0,
-		 msmfb->fb->var.xres, msmfb->fb->var.yres, 0, 0,
-		 NULL, panel->interface_type);
-	mdp->dma_wait(mdp, panel->interface_type);
-#endif
-	/* turn off the panel */
-	panel->blank(panel);
-}
-
-static void msmfb_onchg_suspend(struct early_suspend *h)
-{
-	struct msmfb_info *msmfb = container_of(h, struct msmfb_info,
-						onchg_suspend);
-	struct msm_panel_data *panel = msmfb->panel;
-	/* suspend the panel */
-#ifdef CONFIG_FB_MSM_OVERLAY
-	atomic_set(&mdpclk_on, 0);
-#endif
-	panel->suspend(panel);
-	msmfb->fb_resumed = 0;
-	mutex_unlock(&msmfb->panel_init_lock);
-}
-
-static void msmfb_onchg_resume_handler(struct early_suspend *h)
-{
-	struct msmfb_info *msmfb = container_of(h, struct msmfb_info,
-					onchg_suspend);
-	msmfb_resume(msmfb);
-}
-#endif
 
 static void msmfb_resume(struct msmfb_info *msmfb)
 {
@@ -1385,18 +1332,6 @@ static int msmfb_probe(struct platform_device *pdev)
 		msmfb->earlier_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
 		register_early_suspend(&msmfb->earlier_suspend);
 	}
-#ifdef CONFIG_HTC_ONMODE_CHARGING
-	if (!(msmfb->overrides & MSM_FB_PM_DISABLE)) {
-		msmfb->onchg_suspend.suspend = msmfb_onchg_suspend;
-		msmfb->onchg_suspend.resume = msmfb_onchg_resume_handler;
-		msmfb->onchg_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-		register_onchg_suspend(&msmfb->onchg_suspend);
-
-		msmfb->onchg_earlier_suspend.suspend = msmfb_onchg_earlier_suspend;
-		msmfb->onchg_earlier_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
-		register_onchg_suspend(&msmfb->onchg_earlier_suspend);
-	}
-#endif
 #endif
 
 #ifdef CONFIG_FB_MSM_OVERLAY

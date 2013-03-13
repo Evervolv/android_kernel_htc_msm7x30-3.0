@@ -44,9 +44,6 @@
 #include <linux/fs.h>
 /* HTC_CSP_START */
 #include <linux/ioprio.h>
-#ifdef CONFIG_PERFLOCK
-#include <mach/perflock.h>
-#endif
 /* HTC_CSP_END */
 
 #include <asm/uaccess.h>

@@ -28,7 +28,6 @@
 #include <linux/cpu.h>
 #include <linux/completion.h>
 #include <linux/mutex.h>
-#include <mach/perflock.h>
 #include <linux/syscore_ops.h>
 
 #include <trace/events/power.h>
@@ -409,9 +408,6 @@ static ssize_t store_##file_name					\
 	ret = sscanf(buf, "%u", &new_policy.object);			\
 	if (ret != 1)							\
 		return -EINVAL;						\
-	/* hack for cpufreq_ceiling feature \
-	 * TODO: move to nofifier */ \
-	perflock_##file_name(new_policy.object, policy->cpu);   \
 	ret = __cpufreq_set_policy(policy, &new_policy);		\
 	policy->user_policy.object = policy->object;			\
 									\
@@ -1659,12 +1655,7 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 
 	memcpy(&policy->cpuinfo, &data->cpuinfo,
 				sizeof(struct cpufreq_cpuinfo));
-#ifndef CONFIG_PERFLOCK
-	if (policy->min > data->max || policy->max < data->min) {
-		ret = -EINVAL;
-		goto error_out;
-	}
-#endif
+
 	/* verify the cpu speed can be set within this limit */
 	ret = cpufreq_driver->verify(policy);
 	if (ret)

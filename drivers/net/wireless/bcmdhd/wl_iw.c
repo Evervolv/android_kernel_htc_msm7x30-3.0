@@ -36,11 +36,6 @@
 
 #include <linux/if_arp.h>
 #include <asm/uaccess.h>
-/* HTC_CSP_START */
-#ifdef CONFIG_PERFLOCK
-#include <mach/perflock.h>
-#endif
-/* HTC_CSP_END */
 #include <dngl_stats.h>
 #include <dhd.h>
 #include <dhdioctl.h>
@@ -2440,21 +2435,11 @@ static void wl_iw_traffic_monitor(struct net_device *dev)
             if (traffic_stats_flag == TRAFFIC_STATS_NORMAL) {
                 if (traffic_diff > TRAFFIC_HIGH_WATER_MARK) {
                     traffic_stats_flag = TRAFFIC_STATS_HIGH;
-#if 0
-/* #ifdef CONFIG_PERFLOCK */
-                    if (!is_perf_lock_active(&wlan_perf_lock))
-						perf_lock(&wlan_perf_lock);
-#endif
                     printf("lock cpu here, traffic-count=%ld\n", traffic_diff / 3);
                 }
             } else {
                 if (traffic_diff < TRAFFIC_LOW_WATER_MARK) {
                     traffic_stats_flag = TRAFFIC_STATS_NORMAL;
-#if 0
-/* #ifdef CONFIG_PERFLOCK */
-                    if (is_perf_lock_active(&wlan_perf_lock))
-                        perf_unlock(&wlan_perf_lock);
-#endif
                     printf("unlock cpu here, traffic-count=%ld\n", traffic_diff / 3);
                 }
             }
@@ -10557,20 +10542,9 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 
 		if (status) {
 			printf("HIGH INDICATE!!\n");
-#if 0
-/*#ifdef CONFIG_PERFLOCK*/
-			if (!is_perf_lock_active(&wlan_perf_lock))
-				perf_lock(&wlan_perf_lock);
-#endif
 		} else {
 			printf("LOW INDICATE!!\n");
-#if 0
-/*#ifdef CONFIG_PERFLOCK*/
-			if (is_perf_lock_active(&wlan_perf_lock))
-				perf_unlock(&wlan_perf_lock);
-#endif
 		}
-
 		break;
 /* HTC_CSP_END */
 	case WLC_E_PFN_NET_FOUND:
@@ -10583,10 +10557,6 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 		   netinfo->pfnsubnet.SSID_len));
 /* HTC_CSP_START */
 		WAKE_LOCK_TIMEOUT(iw->pub, 30);
-		//cmd = IWEVCUSTOM;
-		//memset(&wrqu, 0, sizeof(wrqu));
-		//strcpy(extra, PNO_EVENT_UP);
-		//wrqu.data.length = strlen(extra);
 /* HTC_CSP_END */
 
 	}

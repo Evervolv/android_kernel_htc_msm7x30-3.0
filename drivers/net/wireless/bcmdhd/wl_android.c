@@ -36,11 +36,6 @@
 #include <dngl_stats.h>
 #include <dhd.h>
 #include <bcmsdbus.h>
-/* HTC_CSP_START */
-#ifdef CONFIG_PERFLOCK
-#include <mach/perflock.h>
-#endif
-/* HTC_CSP_END */
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
 #endif
@@ -445,19 +440,11 @@ static void wl_android_traffic_monitor(struct net_device *dev)
 		if (traffic_stats_flag == TRAFFIC_STATS_NORMAL) {
 			if (traffic_diff > TRAFFIC_HIGH_WATER_MARK) {
 				traffic_stats_flag = TRAFFIC_STATS_HIGH;
-#ifdef CONFIG_PERFLOCK
-				if (!is_perf_lock_active(&wlan_perf_lock))
-					perf_lock(&wlan_perf_lock);
-#endif
 				printf("lock cpu here, traffic-count=%ld\n", traffic_diff / 3);
 			}
 		} else {
 			if (traffic_diff < TRAFFIC_LOW_WATER_MARK) {
 				traffic_stats_flag = TRAFFIC_STATS_NORMAL;
-#ifdef CONFIG_PERFLOCK
-				if (is_perf_lock_active(&wlan_perf_lock))
-					perf_unlock(&wlan_perf_lock);
-#endif
 				printf("unlock cpu here, traffic-count=%ld\n", traffic_diff / 3);
 			}
 		}

@@ -865,6 +865,14 @@ config MSM_STACKED_MEMORY
 	  memory.  When present this memory bank is used for a high speed
 	  shared memory interface.  When not present regular RAM is used.
 
+config STOCK_VOLTAGE
+	bool "Use stock voltage"
+	default y
+	help
+	  This option is used to indicate the presence of lowered cpu voltages
+	  in acpuclock. If checked thed device will use the stock voltages
+	  instead of the lowered values
+
 config PHYS_OFFSET
 	hex "Kernel physical start address"
 	default "0x40800000" if ARCH_MSM9615

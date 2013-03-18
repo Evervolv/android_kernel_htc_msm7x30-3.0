@@ -80,7 +80,7 @@
 #include <linux/device.h>
 #include <linux/uaccess.h>
 
-#include <media/msm_gemini_8x60.h>
+#include <media/msm_gemini.h>
 #include "msm_gemini_sync.h"
 #include "msm_gemini_common.h"
 

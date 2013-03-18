@@ -29,7 +29,7 @@
 #ifndef MSM_GEMINI_HW_H
 #define MSM_GEMINI_HW_H
 
-#include <media/msm_gemini_8x60.h>
+#include <media/msm_gemini.h>
 #include "msm_gemini_hw_reg.h"
 
 struct msm_gemini_hw_buf {

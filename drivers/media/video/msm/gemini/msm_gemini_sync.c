@@ -75,7 +75,7 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 
-#include <media/msm_gemini_8x60.h>
+#include <media/msm_gemini.h>
 #include "msm_gemini_sync.h"
 #include "msm_gemini_core.h"
 #include "msm_gemini_platform.h"

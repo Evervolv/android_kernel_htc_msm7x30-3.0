@@ -23,12 +23,9 @@ endif
 endif
 endif
 obj-$(CONFIG_MSM_CAMERA) += msm_axi_qos.o
-
+obj-$(CONFIG_MSM_CAMERA) += gemini/
 ifeq ($(CONFIG_MSM_CAMERA_V4L2),y)
-	obj-$(CONFIG_MSM_CAMERA) += gemini/
 	obj-$(CONFIG_MSM_CAMERA_FLASH) += flash.o
-else
-	obj-$(CONFIG_MSM_CAMERA) += gemini_8x60/
 ifeq ($(CONFIG_ARCH_MSM7X27A),y)
 	obj-$(CONFIG_MSM_CAMERA_FLASH) += flash.o
 else

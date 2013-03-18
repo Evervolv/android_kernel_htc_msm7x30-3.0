@@ -163,14 +163,6 @@ int overlay_semaphore_lock(void)
 		fail_counter = 0;
 	} else {
 		/* Fail to get the ownership for this semaphore... */
-		if ((fail_counter%10) == 0) {
-			PR_DISP_WARN("Semaphore own by [%s](%d, %d), [%s](%d, %d) "
-				"want to own it(err=%d)...\n",
-				last_owner_task.comm, last_owner_task.pid,
-				last_owner_task.tgid, current->comm,
-				current->pid, current->tgid, err);
-			dump_stack();
-		}
 		fail_counter++;
 	}
 

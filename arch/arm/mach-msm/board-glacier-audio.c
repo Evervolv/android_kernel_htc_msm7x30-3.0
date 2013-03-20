@@ -31,6 +31,8 @@
 
 #include "board-glacier.h"
 
+#define GLACIER_ACDB_SMEM_SIZE        (0xE000)
+#define GLACIER_ACDB_RADIO_BUFFER_SIZE (1024 * 3072)
 static struct mutex bt_sco_lock;
 
 static void config_gpio_table(uint32_t *table, int len)
@@ -201,6 +203,15 @@ void glacier_snddev_imic_pamp_on(int en)
 	}
 }
 
+void glacier_snddev_emic_pamp_on(int en)
+{
+	pr_aud_info("%s %d\n", __func__, en);
+	if (en)
+		gpio_set_value(GLACIER_AUD_MICPATH_SEL, 1);
+	else
+		gpio_set_value(GLACIER_AUD_MICPATH_SEL, 0);
+}
+
 int glacier_get_rx_vol(uint8_t hw, int network, int level)
 {
 	struct q5v2_hw_info_percentage *info;
@@ -225,6 +236,16 @@ void glacier_mic_bias_enable(int en, int shift)
 		pmic_hsed_enable(PM_HSED_CONTROLLER_1, PM_HSED_ENABLE_OFF);
 }
 
+uint32_t glacier_get_smem_size(void)
+{
+	return GLACIER_ACDB_SMEM_SIZE;
+}
+
+uint32_t glacier_get_acdb_radio_buffer_size(void)
+{
+	return GLACIER_ACDB_RADIO_BUFFER_SIZE;
+}
+
 int glacier_support_audience(void)
 {
 	unsigned int engineerID = glacier_get_engineerid();
@@ -238,6 +259,12 @@ int glacier_support_audience(void)
 int glacier_support_back_mic(void)
 {
 	return glacier_support_audience();
+}
+
+int glacier_support_beats(void)
+{
+	/* this means no HW support 1V for beats */
+	return 0;
 }
 
 void glacier_mic_disable(int mic)
@@ -256,6 +283,10 @@ void glacier_mic_disable(int mic)
 	}
 }
 
+static struct acdb_ops acdb = {
+	.get_acdb_radio_buffer_size = glacier_get_acdb_radio_buffer_size,
+};
+
 static struct q5v2audio_analog_ops ops = {
 	.speaker_enable	= glacier_snddev_poweramp_on,
 	.headset_enable	= glacier_snddev_hsed_pamp_on,
@@ -264,6 +295,7 @@ static struct q5v2audio_analog_ops ops = {
 	.headset_speaker_enable	= glacier_snddev_hs_spk_pamp_on,
 	.bt_sco_enable = glacier_snddev_bt_sco_pamp_on,
 	.int_mic_enable = glacier_snddev_imic_pamp_on,
+	.ext_mic_enable = glacier_snddev_emic_pamp_on,
 	.fm_headset_enable = glacier_snddev_hsed_pamp_on,
 	.fm_speaker_enable = glacier_snddev_poweramp_on,
 };
@@ -281,7 +313,7 @@ static struct acoustic_ops acoustic = {
 	.support_audience = glacier_support_audience,
 	.support_back_mic = glacier_support_back_mic,
 	.mic_disable = glacier_mic_disable,
-	.mute_headset_amp = glacier_snddev_hsed_pamp_on,
+	.support_beats = glacier_support_beats,
 };
 
 void __init glacier_audio_init(void)
@@ -303,6 +335,7 @@ void __init glacier_audio_init(void)
 	htc_7x30_register_ecodec_ops(&eops);
 	htc_7x30_register_voice_ops(&vops);
 	acoustic_register_ops(&acoustic);
+	acdb_register_ops(&acdb);
 #endif
 	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), &audio_pwr);
 	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), &audio_pwr);

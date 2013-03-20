@@ -80,7 +80,6 @@
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
-#include <mach/htc_headset_microp.h>
 
 #include "devices.h"
 #include "timer.h"
@@ -352,7 +351,7 @@ static struct platform_device capella_cm3602 = {
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
 	.hpin_gpio		= PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
 	.key_enable_gpio	= 0,
-	.mic_select_gpio	= GLACIER_AUD_MICPATH_SEL,
+	.mic_select_gpio	= 0,
 };
 
 static struct platform_device htc_headset_gpio = {
@@ -363,30 +362,20 @@ static struct platform_device htc_headset_gpio = {
 	},
 };
 
-/* HTC_HEADSET_MICROP Driver */
-static struct htc_headset_microp_platform_data htc_headset_microp_data = {
-	.remote_int		= 1 << 13,
-	.remote_irq		= MSM_uP_TO_INT(13),
-	.remote_enable_pin	= 1 << 4,
-	.adc_channel		= 0x01,
-	.adc_remote		= {0, 33, 38, 82, 95, 167},
-};
-
-static struct platform_device htc_headset_microp = {
-	.name	= "HTC_HEADSET_MICROP",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &htc_headset_microp_data,
-	},
-};
-
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.hpin_gpio	= 0,
-	.hpin_irq	= MSM_GPIO_TO_INT(
-			  PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
+	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY |
+				  DRIVER_HS_PMIC_DYNAMIC_THRESHOLD,
+	.hpin_gpio		= 0,
+	.hpin_irq		= 0,
+	.key_gpio		= 0,
+	.key_irq		= 0,
+	.key_enable_gpio	= 0,
+	.adc_mic		= 0,
 	.adc_mic		= 14894,
-	.adc_remote		= {0, 1714, 1715, 5630, 5631, 12048},
+	.adc_remote		= {0, 2342, 2343, 7463, 7464, 12592},
+	.hs_controller		= HS_PMIC_CONTROLLER_2,
+	.hs_switch		= HS_PMIC_SC_SWITCH_TYPE,
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -400,7 +389,6 @@ static struct platform_device htc_headset_pmic = {
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
 	&htc_headset_gpio,
-	&htc_headset_microp,
 	&htc_headset_pmic,
 	/* Please put the headset detection driver on the last */
 };
@@ -434,7 +422,7 @@ static struct headset_adc_config htc_headset_mgr_config[] = {
 };
 
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
-	.driver_flag		= DRIVER_HS_MGR_OLD_AJ,
+	.driver_flag		= DRIVER_HS_MGR_RPC_SERVER | DRIVER_HS_MGR_OLD_AJ,
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
 	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),

@@ -396,15 +396,54 @@ static struct platform_device htc_headset_pmic = {
 
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
-	&htc_headset_microp,
 	&htc_headset_gpio,
+	&htc_headset_microp,
 	&htc_headset_pmic,
 	/* Please put the headset detection driver on the last */
 };
 
+static struct headset_adc_config htc_headset_mgr_config[] = {
+	{
+		.type = HEADSET_MIC,
+		.adc_max = 55426,
+		.adc_min = 38237,
+	},
+	{
+		.type = HEADSET_BEATS,
+		.adc_max = 38236,
+		.adc_min = 30586,
+	},
+	{
+		.type = HEADSET_BEATS_SOLO,
+		.adc_max = 30585,
+		.adc_min = 20292,
+	},
+	{
+		.type = HEADSET_NO_MIC, /* HEADSET_INDICATOR */
+		.adc_max = 20291,
+		.adc_min = 7285,
+	},
+	{
+		.type = HEADSET_NO_MIC,
+		.adc_max = 7284,
+		.adc_min = 0,
+	},
+};
+
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
+	.driver_flag		= DRIVER_HS_MGR_OLD_AJ,
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
+	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),
+	.headset_config		= htc_headset_mgr_config,
+};
+
+static struct platform_device htc_headset_mgr = {
+	.name	= "HTC_HEADSET_MGR",
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &htc_headset_mgr_data,
+	},
 };
 
 /* HEADSET DRIVER END */
@@ -549,13 +588,6 @@ static struct platform_device microp_devices[] = {
 		.name = BMA150_G_SENSOR_NAME,
 		.dev = {
 			.platform_data = &microp_g_sensor_pdata,
-		},
-	},
-	{
-		.name	= "HTC_HEADSET_MGR",
-		.id	= -1,
-		.dev	= {
-			.platform_data	= &htc_headset_mgr_data,
 		},
 	},
 };
@@ -1028,10 +1060,8 @@ static unsigned int msm_marimba_setup_power(void)
 	if (rc) {
 		printk(KERN_ERR "%s: vreg_enable() = %d \n",
 					__func__, rc);
-		goto out;
 	}
 
-out:
 	return rc;
 };
 
@@ -1046,99 +1076,6 @@ static void msm_marimba_shutdown_power(void)
 	}
 };
 
-struct vreg *fm_regulator;
-static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
-{
-	int rc;
-	uint32_t irqcfg;
-	const char *id = "FMPW";
-
-	pdata->vreg_s2 = vreg_get(NULL, "s2");
-	if (IS_ERR(pdata->vreg_s2)) {
-		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
-			__func__, PTR_ERR(pdata->vreg_s2));
-		return -1;
-	}
-
-	rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 1300);
-	if (rc < 0) {
-		printk(KERN_ERR "%s: voltage level vote failed (%d)\n",
-			__func__, rc);
-		return rc;
-	}
-
-	rc = vreg_enable(pdata->vreg_s2);
-	if (rc) {
-		printk(KERN_ERR "%s: vreg_enable() = %d \n",
-					__func__, rc);
-		return rc;
-	}
-
-	rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
-					  PMAPP_CLOCK_VOTE_ON);
-	if (rc < 0) {
-		printk(KERN_ERR "%s: clock vote failed (%d)\n",
-			__func__, rc);
-		goto fm_clock_vote_fail;
-	}
-	irqcfg = PCOM_GPIO_CFG(147, 0, GPIO_INPUT, GPIO_NO_PULL,
-					GPIO_CFG_2MA);
-	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
-	if (rc) {
-		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, irqcfg, rc);
-		rc = -EIO;
-		goto fm_gpio_config_fail;
-
-	}
-	return 0;
-fm_gpio_config_fail:
-	pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
-				  PMAPP_CLOCK_VOTE_OFF);
-fm_clock_vote_fail:
-	vreg_disable(pdata->vreg_s2);
-	return rc;
-
-};
-
-static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
-{
-	int rc;
-	const char *id = "FMPW";
-	uint32_t irqcfg = PCOM_GPIO_CFG(147, 0, GPIO_INPUT, GPIO_PULL_UP,
-					GPIO_CFG_2MA);
-	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
-	if (rc) {
-		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, irqcfg, rc);
-	}
-	rc = vreg_disable(pdata->vreg_s2);
-	if (rc) {
-		printk(KERN_ERR "%s: return val: %d \n",
-					__func__, rc);
-	}
-	rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
-					  PMAPP_CLOCK_VOTE_OFF);
-	if (rc < 0)
-		printk(KERN_ERR "%s: clock_vote return val: %d \n",
-						__func__, rc);
-	rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 0);
-	if (rc < 0)
-		printk(KERN_ERR "%s: vreg level vote return val: %d \n",
-						__func__, rc);
-}
-
-static struct marimba_fm_platform_data marimba_fm_pdata = {
-	.fm_setup =  fm_radio_setup,
-	.fm_shutdown = fm_radio_shutdown,
-	.irq = MSM_GPIO_TO_INT(147),
-	.vreg_s2 = NULL,
-	.vreg_xo_out = NULL,
-	.is_fm_soc_i2s_master = false,
-	.config_i2s_gpio = NULL,
-};
-
-
 /* Slave id address for FM/CDC/QMEMBIST
  * Values can be programmed using Marimba slave id 0
  * should there be a conflict with other I2C devices
@@ -1146,9 +1083,6 @@ static struct marimba_fm_platform_data marimba_fm_pdata = {
 #define MARIMBA_SLAVE_ID_FM_ADDR	0x2A
 #define MARIMBA_SLAVE_ID_CDC_ADDR	0x77
 #define MARIMBA_SLAVE_ID_QMEMBIST_ADDR	0X66
-
-#define BAHAMA_SLAVE_ID_FM_ADDR         0x2A
-#define BAHAMA_SLAVE_ID_QMEMBIST_ADDR   0x7B
 
 static struct vreg *vreg_codec_s4;
 static int msm_marimba_codec_power(int vreg_on)
@@ -1193,11 +1127,8 @@ static struct marimba_platform_data marimba_pdata = {
 	.slave_id[MARIMBA_SLAVE_ID_FM]       = MARIMBA_SLAVE_ID_FM_ADDR,
 	.slave_id[MARIMBA_SLAVE_ID_CDC]	     = MARIMBA_SLAVE_ID_CDC_ADDR,
 	.slave_id[MARIMBA_SLAVE_ID_QMEMBIST] = MARIMBA_SLAVE_ID_QMEMBIST_ADDR,
-	.slave_id[SLAVE_ID_BAHAMA_FM]        = BAHAMA_SLAVE_ID_FM_ADDR,
-	.slave_id[SLAVE_ID_BAHAMA_QMEMBIST]  = BAHAMA_SLAVE_ID_QMEMBIST_ADDR,
 	.marimba_setup = msm_marimba_setup_power,
 	.marimba_shutdown = msm_marimba_shutdown_power,
-	.fm = &marimba_fm_pdata,
 	.codec = &mariba_codec_pdata,
 	.tsadc_ssbi_adap = MARIMBA_SSBI_ADAP,
 };
@@ -1312,21 +1243,21 @@ static struct platform_device msm_aux_pcm_device = {
 	.resource       = msm_aux_pcm_resources,
 };
 
-struct platform_device msm_aictl_device = {
+static struct platform_device msm_aictl_device = {
 	.name = "audio_interct",
 	.id   = 0,
 	.num_resources = ARRAY_SIZE(msm_aictl_resources),
 	.resource = msm_aictl_resources,
 };
 
-struct platform_device msm_mi2s_device = {
+static struct platform_device msm_mi2s_device = {
 	.name = "mi2s",
 	.id   = 0,
 	.num_resources = ARRAY_SIZE(msm_mi2s_resources),
 	.resource = msm_mi2s_resources,
 };
 
-struct platform_device msm_lpa_device = {
+static struct platform_device msm_lpa_device = {
 	.name = "lpa",
 	.id   = 0,
 	.num_resources = ARRAY_SIZE(msm_lpa_resources),
@@ -1335,7 +1266,6 @@ struct platform_device msm_lpa_device = {
 		.platform_data = &lpa_pdata,
 	},
 };
-
 #endif
 
 #define DEC0_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
@@ -3001,6 +2931,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 	&cable_detect_device,
 #endif
+	&htc_headset_mgr
 };
 
 static void __init glacier_init(void)

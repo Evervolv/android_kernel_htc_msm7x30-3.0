@@ -109,6 +109,7 @@
 #ifdef CONFIG_BT
 #include <mach/htc_bdaddress.h>
 #endif
+int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 
 #define GPIO_2MA	0
 #define GPIO_4MA	1
@@ -384,6 +385,8 @@ static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
 	.hpin_gpio	= 0,
 	.hpin_irq	= MSM_GPIO_TO_INT(
 			  PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
+	.adc_mic		= 14894,
+	.adc_remote		= {0, 1714, 1715, 5630, 5631, 12048},
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -2219,14 +2222,14 @@ static uint32_t usb_ID_PIN_input_table[] = {
 	GPIO_CFG(GLACIER_GPIO_USB_ID1_PIN, 0, GPIO_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
-static uint32_t usb_ID_PIN_ouput_table[] = {
+static uint32_t usb_ID_PIN_output_table[] = {
 	GPIO_CFG(GLACIER_GPIO_USB_ID1_PIN, 0, GPIO_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
 void config_glacier_usb_id_gpios(bool output)
 {
 	if (output) {
-		config_gpio_table(usb_ID_PIN_ouput_table, ARRAY_SIZE(usb_ID_PIN_ouput_table));
+		config_gpio_table(usb_ID_PIN_output_table, ARRAY_SIZE(usb_ID_PIN_output_table));
 		gpio_set_value(GLACIER_GPIO_USB_ID1_PIN, 1);
 		printk(KERN_INFO "%s %d output high\n",  __func__, GLACIER_GPIO_USB_ID1_PIN);
 	} else {
@@ -2234,14 +2237,20 @@ void config_glacier_usb_id_gpios(bool output)
 		printk(KERN_INFO "%s %d input none pull\n",  __func__, GLACIER_GPIO_USB_ID1_PIN);
 	}
 }
+#define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
+int64_t glacier_get_usbid_adc(void)
+{
+	uint32_t adc_value = 0xffffffff;
+	htc_get_usb_accessory_adc_level(&adc_value);
+	adc_value = PM8058ADC_16BIT(adc_value);
+	return adc_value;
+}
 
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 static struct cable_detect_platform_data cable_detect_pdata = {
-	.detect_type 		= CABLE_TYPE_ID_PIN,
+	.detect_type 		= CABLE_TYPE_PMIC_ADC,
 	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID1_PIN,
 	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
-	.dock_detect = 1, /* detect desk dock */
-	.dock_pin_gpio  = GLACIER_GPIO_DOCK_PIN,
+	.get_adc_cb		= glacier_get_usbid_adc,
 };
 
 static struct platform_device cable_detect_device = {
@@ -2251,7 +2260,6 @@ static struct platform_device cable_detect_device = {
 		.platform_data = &cable_detect_pdata,
 	},
 };
-#endif
 
 static struct msm_gpio msm_i2c_gpios_hw[] = {
 	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
@@ -2928,9 +2936,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
-#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 	&cable_detect_device,
-#endif
 	&htc_headset_mgr
 };
 

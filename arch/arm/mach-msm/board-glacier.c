@@ -25,8 +25,6 @@
 #include <linux/leds.h>
 #include <linux/mfd/marimba.h>
 #include <linux/i2c.h>
-#include <linux/bma250.h>
-#include <linux/cm3629.h>
 #include <linux/lightsensor.h>
 #include <linux/input.h>
 #include <linux/curcial_oj.h>
@@ -38,7 +36,6 @@
 #include <linux/a1026.h>
 #include <linux/power_supply.h>
 #include <linux/leds-pm8058.h>
-#include <linux/msm_adc.h>
 #include <linux/dma-mapping.h>
 #include <linux/proc_fs.h>
 #include <linux/htc_flashlight.h>
@@ -81,33 +78,34 @@
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
 
-#include "devices.h"
-#include "timer.h"
 #ifdef CONFIG_USB_G_ANDROID
 #include <mach/htc_usb.h>
 #include <linux/usb/android_composite.h>
 #include <linux/usb/android.h>
 #include <mach/usbdiag.h>
 #endif
-#include "proc_comm.h"
-#include "pm.h"
-#include "pm-boot.h"
-#include "spm.h"
-#include "acpuclock.h"
 #include <mach/dal_axi.h>
 #include <mach/msm_serial_hs.h>
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 #include <mach/bcm_bt_lpm.h>
 #endif
-#include <mach/sdio_al.h>
-#include "smd_private.h"
-#include "board-glacier.h"
-#include "board-msm7x30-regulator.h"
-#include <mach/board_htc.h>
-#include <mach/cable_detect.h>
 #ifdef CONFIG_BT
 #include <mach/htc_bdaddress.h>
 #endif
+#include <mach/board_htc.h>
+#include <mach/cable_detect.h>
+#include "devices.h"
+#include "timer.h"
+#include "proc_comm.h"
+#include "pm.h"
+#include "pm-boot.h"
+#include "spm.h"
+#include "acpuclock.h"
+
+#include "smd_private.h"
+#include "board-glacier.h"
+#include "board-msm7x30-regulator.h"
+
 int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 
 #define GPIO_2MA	0
@@ -345,13 +343,11 @@ static struct platform_device capella_cm3602 = {
 	}
 };
 
-/* HEADSET DRIVER BEGIN */
-
 /* HTC_HEADSET_GPIO Driver */
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
 	.hpin_gpio		= PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
 	.key_enable_gpio	= 0,
-	.mic_select_gpio	= 0,
+	.mic_select_gpio	= GLACIER_AUD_MICPATH_SEL,
 };
 
 static struct platform_device htc_headset_gpio = {
@@ -367,11 +363,6 @@ static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
 	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY |
 				  DRIVER_HS_PMIC_DYNAMIC_THRESHOLD,
 	.hpin_gpio		= 0,
-	.hpin_irq		= 0,
-	.key_gpio		= 0,
-	.key_irq		= 0,
-	.key_enable_gpio	= 0,
-	.adc_mic		= 0,
 	.adc_mic		= 14894,
 	.adc_remote		= {0, 2342, 2343, 7463, 7464, 12592},
 	.hs_controller		= HS_PMIC_CONTROLLER_2,
@@ -388,8 +379,8 @@ static struct platform_device htc_headset_pmic = {
 
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
-	&htc_headset_gpio,
 	&htc_headset_pmic,
+	&htc_headset_gpio,
 	/* Please put the headset detection driver on the last */
 };
 
@@ -436,8 +427,6 @@ static struct platform_device htc_headset_mgr = {
 		.platform_data	= &htc_headset_mgr_data,
 	},
 };
-
-/* HEADSET DRIVER END */
 
 static struct microp_function_config microp_functions[] = {
 	{
@@ -492,73 +481,6 @@ static struct microp_led_platform_data microp_leds_data = {
 static struct bma150_platform_data microp_g_sensor_pdata = {
 	.microp_new_cmd = 1,
 	.chip_layout = 0,
-};
-
-#define OJ_SHUTDOWN            (35)
-static void curcial_oj_shutdown(int enable)
-{
-	/* set suspend state as output low as logic suggest.*/
-	unsigned id;
-
-	if (enable) { /*enter early suspend*/
-		id = PCOM_GPIO_CFG(OJ_SHUTDOWN, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA);
-		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
-	}
-
-	gpio_set_value(OJ_SHUTDOWN, 0);
-}
-
-static int curcial_oj_poweron(int on)
-{
-	return 1;
-}
-
-static void curcial_oj_adjust_xy(uint8_t *data, int16_t *mSumDeltaX, int16_t *mSumDeltaY)
-{
-	int8_t 	deltaX;
-	int8_t 	deltaY;
-
-
-	if (data[2] == 0x80)
-		data[2] = 0x81;
-	if (data[1] == 0x80)
-		data[1] = 0x81;
-	if (0) {
-		deltaX = (-1)*((int8_t) data[2]); /*X=2*/
-		deltaY = (1)*((int8_t) data[1]); /*Y=1*/
-	} else {
-		deltaX = (1)*((int8_t) data[1]);
-		deltaY = (1)*((int8_t) data[2]);
-	}
-	*mSumDeltaX = -((int16_t)deltaX);
-	*mSumDeltaY = -((int16_t)deltaY);
-}
-
-static struct curcial_oj_platform_data glacier_oj_data = {
-	.oj_poweron = curcial_oj_poweron,
-	.oj_shutdown = curcial_oj_shutdown,
-	.oj_adjust_xy = curcial_oj_adjust_xy,
-	.mdelay_time = 7,
-	.normal_th = 10,
-	.xy_ratio = 15,
-	.interval = 20,
-	.swap = false,
-	.x = -1,
-	.y = 1,
-	.share_power = false,
-	.debugflag = 0,
-	.ap_code = false,
-	.sht_tbl = {30, 200, 250, 300, 350, 400, 450},
-	.pxsum_tbl = {0, 0, 70, 80, 90, 100, 110},
-	.degree = 7,
-	.Xsteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-		10, 10, 10, 10, 10, 9, 9, 9, 9, 9,
-		9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
-	.Ysteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-		10, 10, 10, 10, 10, 9, 9, 9, 9, 9,
-		9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
-	.irq_gpio = 26,
-	.rst_gpio = GLACIER_OJ_RSTz,
 };
 
 static struct platform_device microp_devices[] = {
@@ -651,18 +573,7 @@ static int pm8058_gpios_init(void)
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
-#if 0
-	static struct pm_gpio tp_rstz = {
-		.direction      = PM_GPIO_DIR_OUT,
-		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-		.output_value   = 1,
-		.pull           = PM_GPIO_PULL_NO,
-		.vin_sel        = PM8058_GPIO_VIN_L5,
-		.out_strength   = PM_GPIO_STRENGTH_HIGH,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
-#endif
+
 	static struct pm_gpio home_key = {
 		.direction      = PM_GPIO_DIR_IN,
 		.output_buffer  = 0,
@@ -791,14 +702,7 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s OJ_ACTION config ok\n", __func__);
-#if 0
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_TP_RSTz), &tp_rstz);
-	if (rc) {
-		printk(KERN_ERR "%s TP_RSTz config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s TP_RSTz config ok\n", __func__);
-#endif
+
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_VOL_UP), &vol_up);
 	if (rc) {
 		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);
@@ -1194,7 +1098,6 @@ static struct resource msm_lpa_resources[] = {
 };
 
 static struct resource msm_aux_pcm_resources[] = {
-
 	{
 		.name = "aux_codec_reg_addr",
 		.start = 0xac9c00c0,
@@ -1427,21 +1330,22 @@ static uint32_t audience_gpio_on_table[] = {
 
 static void __init audience_gpio_init(void)
 {
-  /*Bit2:
-    0: with audience.
-    1: without audience*/
-  if (engineerid & 0x4) {
-    config_gpio_table(audience_gpio_on_table, ARRAY_SIZE(audience_gpio_on_table));
-    gpio_set_value(GLACIER_AUD_A1026_INT, 0);
-    mdelay(1);
-    gpio_set_value(GLACIER_AUD_MICPATH_SEL, 0);
-    mdelay(1);
-    gpio_set_value(GLACIER_AUD_A1026_RESET, 0);
-    mdelay(1);
-    gpio_set_value(GLACIER_AUD_A1026_WAKEUP, 0);
-    mdelay(1);
-    pr_info("Configure audio codec gpio for devices without audience.\n");
-  }
+	/* Bit2:
+	 * 0: with audience.
+	 * 1: without audience
+	 */
+	if (engineerid & 0x4) {
+		config_gpio_table(audience_gpio_on_table, ARRAY_SIZE(audience_gpio_on_table));
+		gpio_set_value(GLACIER_AUD_A1026_INT, 0);
+		mdelay(1);
+		gpio_set_value(GLACIER_AUD_MICPATH_SEL, 0);
+		mdelay(1);
+		gpio_set_value(GLACIER_AUD_A1026_RESET, 0);
+		mdelay(1);
+		gpio_set_value(GLACIER_AUD_A1026_WAKEUP, 0);
+		mdelay(1);
+		pr_info("Configure audio codec gpio for devices without audience.\n");
+	}
 }
 #endif
 
@@ -1468,7 +1372,6 @@ static struct platform_device android_usb_device = {
 		.platform_data = &android_usb_pdata,
 	},
 };
-
 #endif
 
 static struct i2c_board_info msm_marimba_board_info[] = {
@@ -1526,6 +1429,73 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 		.latency = 2,
 		.residency = 0,
 	},
+};
+
+#define OJ_SHUTDOWN            (35)
+static void curcial_oj_shutdown(int enable)
+{
+	/* set suspend state as output low as logic suggest.*/
+	unsigned id;
+
+	if (enable) { /*enter early suspend*/
+		id = PCOM_GPIO_CFG(OJ_SHUTDOWN, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA);
+		msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &id, 0);
+	}
+
+	gpio_set_value(OJ_SHUTDOWN, 0);
+}
+
+static int curcial_oj_poweron(int on)
+{
+	return 1;
+}
+
+static void curcial_oj_adjust_xy(uint8_t *data, int16_t *mSumDeltaX, int16_t *mSumDeltaY)
+{
+	int8_t 	deltaX;
+	int8_t 	deltaY;
+
+
+	if (data[2] == 0x80)
+		data[2] = 0x81;
+	if (data[1] == 0x80)
+		data[1] = 0x81;
+	if (0) {
+		deltaX = (-1)*((int8_t) data[2]); /*X=2*/
+		deltaY = (1)*((int8_t) data[1]); /*Y=1*/
+	} else {
+		deltaX = (1)*((int8_t) data[1]);
+		deltaY = (1)*((int8_t) data[2]);
+	}
+	*mSumDeltaX = -((int16_t)deltaX);
+	*mSumDeltaY = -((int16_t)deltaY);
+}
+
+static struct curcial_oj_platform_data glacier_oj_data = {
+	.oj_poweron = curcial_oj_poweron,
+	.oj_shutdown = curcial_oj_shutdown,
+	.oj_adjust_xy = curcial_oj_adjust_xy,
+	.mdelay_time = 7,
+	.normal_th = 10,
+	.xy_ratio = 15,
+	.interval = 20,
+	.swap = false,
+	.x = -1,
+	.y = 1,
+	.share_power = false,
+	.debugflag = 0,
+	.ap_code = false,
+	.sht_tbl = {30, 200, 250, 300, 350, 400, 450},
+	.pxsum_tbl = {0, 0, 70, 80, 90, 100, 110},
+	.degree = 7,
+	.Xsteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+		10, 10, 10, 10, 10, 9, 9, 9, 9, 9,
+		9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+	.Ysteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+		10, 10, 10, 10, 10, 9, 9, 9, 9, 9,
+		9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+	.irq_gpio = 26,
+	.rst_gpio = GLACIER_OJ_RSTz,
 };
 
 #ifdef CONFIG_SPI_QSD
@@ -1679,16 +1649,9 @@ static struct platform_device msm_migrate_pages_device = {
 };
 
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
-       .name = "pmem_adsp",
-       .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-       .cached = 1,
-	.memory_type = MEMTYPE_EBI1,
-};
-
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
-       .name = "pmem_audio",
-       .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-       .cached = 0,
+	.name = "pmem_adsp",
+	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.cached = 1,
 	.memory_type = MEMTYPE_EBI1,
 };
 
@@ -1696,12 +1659,6 @@ static struct platform_device android_pmem_adsp_device = {
        .name = "android_pmem",
        .id = 2,
        .dev = { .platform_data = &android_pmem_adsp_pdata },
-};
-
-static struct platform_device android_pmem_audio_device = {
-       .name = "android_pmem",
-       .id = 4,
-       .dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
 static struct htc_battery_platform_data htc_battery_pdev_data = {
@@ -1771,7 +1728,7 @@ static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #endif
 #ifdef CONFIG_MT9V113
 	{
-		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
+		I2C_BOARD_INFO("mt9v113", 0x3C),
 	},
 #endif
 };
@@ -2016,7 +1973,7 @@ static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.num_flash_levels	= FLASHLIGHT_NUM,
 	.low_temp_limit		= 5,
 	.low_cap_limit		= 15,
-	.flash_info			= NULL,
+	.flash_info		= NULL,
 };
 
 #ifdef CONFIG_S5K4E1GX
@@ -2151,46 +2108,6 @@ static struct platform_device glacier_rfkill = {
 };
 #endif
 
-#ifdef CONFIG_MSM_SDIO_AL
-static struct msm_gpio mdm2ap_status = {
-	GPIO_CFG(77, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	"mdm2ap_status"
-};
-
-static int configure_mdm2ap_status(int on)
-{
-	if (on)
-		return msm_gpios_request_enable(&mdm2ap_status, 1);
-	else {
-		msm_gpios_disable_free(&mdm2ap_status, 1);
-		return 0;
-	}
-}
-
-static int get_mdm2ap_status(void)
-{
-	return gpio_get_value(GPIO_PIN(mdm2ap_status.gpio_cfg));
-}
-
-static struct sdio_al_platform_data sdio_al_pdata = {
-	.config_mdm2ap_status = configure_mdm2ap_status,
-	.get_mdm2ap_status = get_mdm2ap_status,
-	.allow_sdioc_version_major_2 = 1,
-	.peer_sdioc_version_minor = 0x0001,
-	.peer_sdioc_version_major = 0x0003,
-	.peer_sdioc_boot_version_minor = 0x0001,
-	.peer_sdioc_boot_version_major = 0x0003,
-};
-
-struct platform_device msm_device_sdio_al = {
-	.name = "msm_sdio_al",
-	.id = -1,
-	.dev		= {
-		.platform_data	= &sdio_al_pdata,
-	},
-};
-#endif /* CONFIG_MSM_SDIO_AL */
-
 static struct resource ram_console_resources[] = {
 	{
 		.start  = MSM_RAM_CONSOLE_BASE,
@@ -2324,7 +2241,6 @@ static struct msm_i2c_platform_data msm_i2c_pdata = {
 	.pri_clk = 70,
 	.pri_dat = 71,
 	.rmutex  = 1,
-        //	.rsl_id = "D:I2C02000021",
         .rsl_id = "S:6",
 	.msm_i2c_config_gpio = msm_i2c_gpio_config,
 };
@@ -2340,7 +2256,6 @@ static void __init msm_device_i2c_init(void)
 static struct msm_i2c_platform_data msm_i2c_2_pdata = {
 	.clk_freq = 100000,
 	.rmutex  = 1,
-        //	.rsl_id = "D:I2C02000022",
 	.rsl_id = "S:7",
 	.msm_i2c_config_gpio = msm_i2c_gpio_config,
 };
@@ -2351,7 +2266,7 @@ static void __init msm_device_i2c_2_init(void)
 }
 
 static struct msm_i2c_platform_data qup_i2c_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 384000,
 	.msm_i2c_config_gpio = qup_i2c_gpio_config,
 };
 
@@ -2369,11 +2284,6 @@ static void __init qup_device_i2c_init(void)
 }
 
 #ifdef CONFIG_I2C_SSBI
-/*
-static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi6_pdata = {
-	.rsl_id = "D:PMIC_SSBI",
-};
-*/
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 	.rsl_id = "D:CODEC_SSBI",
 };
@@ -2619,33 +2529,11 @@ static struct mmc_platform_data msm7x30_sdc2_data = {
 #endif
 	.msmsdcc_fmin	= 144000,
 	.msmsdcc_fmid	= 24576000,
-	//	.msmsdcc_fmax	= 49152000,
 	.msmsdcc_fmax	= 50000000,
 	.slot_type		= &glacier_sdc2_slot_type,
 	.nonremovable	= 1,
 	.emmc_dma_ch	= 7,
 };
-#endif
-
-#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
-/* HTC_WIFI_START */
-/*
-static unsigned int glacier_sdc3_slot_type = MMC_TYPE_SDIO_WIFI;
-static struct mmc_platform_data msm7x30_sdc3_data = {
-	.ocr_mask	= MMC_VDD_27_28 | MMC_VDD_28_29,
-	.translate_vdd	= msm_sdcc_setup_power,
-	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-#ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
-	.sdiowakeup_irq = MSM_GPIO_TO_INT(118),
-#endif
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 24576000,
-	.msmsdcc_fmax	= 49152000,
-	.slot_type		= &glacier_sdc3_slot_type,
-	.nonremovable	= 0,
-};
-*/
-/* HTC_WIFI_END */
 #endif
 
 #ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
@@ -2654,13 +2542,6 @@ static struct mmc_platform_data msm7x30_sdc4_data = {
 	.ocr_mask	= MMC_VDD_27_28 | MMC_VDD_28_29,
 	.translate_vdd	= msm_sdcc_setup_power,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
-	.status      = msm7x30_sdcc_slot_status,
-	.status_irq  = PM8058_GPIO_IRQ(PMIC8058_IRQ_BASE, GLACIER_SDMC_CD_N),
-	.irq_flags   = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-#endif
-
 #ifdef CONFIG_MMC_MSM_SDC4_WP_SUPPORT
 	.wpswitch    = msm_sdcc_get_wpswitch,
 #endif
@@ -2716,17 +2597,11 @@ static void __init msm7x30_init_mmc(void)
 	}
 
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
-	if (machine_is_msm7x30_fluid()) {
-		msm7x30_sdc1_data.ocr_mask =  MMC_VDD_27_28 | MMC_VDD_28_29;
-		msm_sdc1_lvlshft_enable();
-	}
 	sdcc_vreg_data[0].vreg_data = vreg_s3;
 	sdcc_vreg_data[0].level = 1800;
 	msm_add_sdcc(1, &msm7x30_sdc1_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-	if (machine_is_msm8x55_svlte_surf())
-		msm7x30_sdc2_data.msmsdcc_fmax =  24576000;
 	sdcc_vreg_data[1].vreg_data = vreg_s3;
 	sdcc_vreg_data[1].level = 1800;
 	msm7x30_sdc2_data.swfi_latency =
@@ -2736,13 +2611,7 @@ static void __init msm7x30_init_mmc(void)
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 	sdcc_vreg_data[2].vreg_data = vreg_s3;
 	sdcc_vreg_data[2].level = 1800;
-/* HTC_WIFI_START */
-	/*
-	msm_sdcc_setup_gpio(3, 1);
-	msm_add_sdcc(3, &msm7x30_sdc3_data);
-	*/
 	glacier_init_mmc(system_rev);
-/* HTC_WIFI_END*/
 #endif
 #ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
 	sdcc_vreg_data[3].vreg_data = vreg_mmc;
@@ -2852,7 +2721,6 @@ static struct platform_device *devices[] __initdata = {
         &msm_device_ssbi_pmic1,
 #endif
 #ifdef CONFIG_I2C_SSBI
-        /* &msm_device_ssbi6, */
         &msm_device_ssbi7,
 #endif
         &android_pmem_device,
@@ -2861,7 +2729,6 @@ static struct platform_device *devices[] __initdata = {
         &msm_rotator_device,
 #endif
         &android_pmem_adsp_device,
-        &android_pmem_audio_device,
         &msm_device_i2c,
         &msm_device_i2c_2,
 #ifdef CONFIG_INPUT_CAPELLA_CM3602
@@ -2875,10 +2742,6 @@ static struct platform_device *devices[] __initdata = {
 #endif
         &msm_device_adspdec,
         &qup_device_i2c,
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
-        /*&msm_bt_power_device,*/
-#endif
         &msm_kgsl_3d0,
         &msm_kgsl_2d0,
         &msm_device_vidc_720p,
@@ -2890,9 +2753,6 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
         &msm_device_tsif,
-#endif
-#ifdef CONFIG_MSM_SDIO_AL
-        /* &msm_device_sdio_al, */
 #endif
 
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
@@ -2909,9 +2769,8 @@ static struct platform_device *devices[] __initdata = {
         &msm_camera_sensor_s5k4e1gx,
 #endif
 #ifdef CONFIG_MT9V113
-	&msm_camera_sensor_mt9v113, /* 2nd CAM */
+	&msm_camera_sensor_mt9v113,
 #endif
-
         &htc_battery_pdev,
         &msm_ebi0_thermal,
         &msm_ebi1_thermal,
@@ -3015,7 +2874,6 @@ static void __init glacier_init(void)
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 				ARRAY_SIZE(msm_camera_boardinfo));
 #ifdef CONFIG_I2C_SSBI
-	/* msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata; */
 	msm_device_ssbi7.dev.platform_data = &msm_i2c_ssbi7_pdata;
 #endif
 	pm8058_gpios_init();
@@ -3106,33 +2964,17 @@ static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 	},
 };
 
-static void __init size_pmem_device(struct android_pmem_platform_data *pdata, unsigned long start, unsigned long size)
-{
-	pdata->start = start;
-	pdata->size = size;
-	if (pdata->start)
-		pr_info("%s: pmem %s requests %lu bytes at 0x%p (0x%lx physical).\r\n",
-			__func__, pdata->name, size, __va(start), start);
-	else
-		pr_info("%s: pmem %s requests %lu bytes dynamically.\r\n",
-			__func__, pdata->name, size);
-}
-
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
-	size_pmem_device(&android_pmem_adsp_pdata, 0, pmem_adsp_size);
-	size_pmem_device(&android_pmem_pdata, 0, pmem_sf_size);
-	msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
+	android_pmem_adsp_pdata.size = pmem_adsp_size;
+	android_pmem_pdata.size = pmem_sf_size;
 #endif
 }
 
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
-	if (p->start == 0) {
-		pr_info("%s: reserve %lu bytes from memory %d for %s.\r\n", __func__, p->size, p->memory_type, p->name);
-		msm7x30_reserve_table[p->memory_type].size += p->size;
-	}
+	msm7x30_reserve_table[p->memory_type].size += p->size;
 }
 
 static void __init reserve_pmem_memory(void)
@@ -3140,6 +2982,7 @@ static void __init reserve_pmem_memory(void)
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
+	msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
 #endif
 }
 

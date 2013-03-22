@@ -121,14 +121,8 @@ static struct platform_device glacier_keypad_input_device = {
 		.platform_data	= &glacier_keypad_data,
 	},
 };
-/*
-static int glacier_reset_keys_up[] = {
-	KEY_VOLUMEUP,
-	0
-};
-*/
+
 static struct keyreset_platform_data glacier_reset_keys_pdata = {
-	/*.keys_up = glacier_reset_keys_up,*/
 	.keys_down = {
 		KEY_POWER,
 		KEY_VOLUMEDOWN,

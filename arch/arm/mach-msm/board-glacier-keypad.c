@@ -45,7 +45,7 @@ static struct gpio_event_direct_entry glacier_keypad_input_map[] = {
 	},
 	{
 		.gpio = PM8058_GPIO_PM_TO_SYS(GLACIER_OJ_ACTION),
-		.code = BTN_MOUSE,
+		.code = KEY_F23,
 	},
 	{
 		.gpio = PM8058_GPIO_PM_TO_SYS(GLACIER_HOME_KEY),
@@ -132,7 +132,7 @@ static struct keyreset_platform_data glacier_reset_keys_pdata = {
 	.keys_down = {
 		KEY_POWER,
 		KEY_VOLUMEDOWN,
-		BTN_MOUSE,
+		KEY_F23,
 		0
 	},
 };

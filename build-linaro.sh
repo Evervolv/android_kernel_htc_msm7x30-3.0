@@ -16,7 +16,7 @@ export CROSS_COMPILE=$HOME/android/system/prebuilt/linux-x86/toolchain/linaro/bi
 
 ## Build kernel using pyramid_defconfig
 make mrproper
-make codefirex_glacier_defconfig
+make evervolv_glacier_defconfig
 make -j$MAKE ARCH=arm
 sleep 1
 

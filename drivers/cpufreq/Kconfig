@@ -44,12 +44,6 @@ config CPU_FREQ_STAT_DETAILS
 
 choice
 	prompt "Default CPUFreq governor"
-	default CPU_FREQ_DEFAULT_GOV_USERSPACE if CPU_FREQ_SA1100 || CPU_FREQ_SA1110
-	default CPU_FREQ_DEFAULT_GOV_PERFORMANCE
-	help
-	  This option sets which CPUFreq governor shall be loaded at
-	  startup. If in doubt, select 'performance'.
-
 config CPU_FREQ_DEFAULT_GOV_PERFORMANCE
 	bool "performance"
 	select CPU_FREQ_GOV_PERFORMANCE
@@ -60,7 +54,7 @@ config CPU_FREQ_DEFAULT_GOV_PERFORMANCE
 
 config CPU_FREQ_DEFAULT_GOV_POWERSAVE
 	bool "powersave"
-	depends on EXPERT
+	depends on EMBEDDED
 	select CPU_FREQ_GOV_POWERSAVE
 	help
 	  Use the CPUFreq governor 'powersave' as default. This sets
@@ -104,11 +98,35 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	bool "interactive"
 	select CPU_FREQ_GOV_INTERACTIVE
 	help
-	  Use the CPUFreq governor 'interactive' as default. This allows
-	  you to get a full dynamic cpu frequency capable system by simply
-	  loading your cpufreq low-level hardware driver, using the
-	  'interactive' governor for latency-sensitive workloads.
+	  Use the 'interactive' governor as default. This gets full cpu frequency
+	  scaling for workloads that are latency sensitive, typically interactive
+	  workloads.
 
+config CPU_FREQ_DEFAULT_GOV_INTERACTIVEX
+	bool "InteractiveX"
+	select CPU_FREQ_GOV_INTERACTIVEX
+	help
+	  Use the CPUFreq governor 'InteractiveX' as default.
+
+config CPU_FREQ_DEFAULT_GOV_SMARTASS
+	bool "smartass"
+	select CPU_FREQ_GOV_SMARTASS
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+	  Use the CPUFreq governor 'smartass' as default.
+
+config CPU_FREQ_DEFAULT_GOV_SMARTASS2
+	bool "Smartass2"
+	select CPU_FREQ_GOV_SMARTASS2
+	help
+	  Use the CPUFreq governor 'Smartass2' as default.
+
+config CPU_FREQ_DEFAULT_GOV_LIONHEART
+	bool "Lionheart"
+	select CPU_FREQ_GOV_LIONHEART
+	select CPU_FREQ_GOV_CONSERVATIVE
+	help
+	  Use the CPUFreq governor 'Lionheart' as default.
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -121,6 +139,29 @@ config CPU_FREQ_GOV_PERFORMANCE
 	  module will be called cpufreq_performance.
 
 	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_INTERACTIVE
+	tristate "'interactive' cpufreq policy governor"
+	help
+	  'interactive' - This driver adds a dynamic cpufreq policy governor.
+	  Designed for low latency burst workloads. Scaling it done when coming
+	  out of idle instead of polling.
+
+config CPU_FREQ_GOV_SCARY
+	tristate "'scary' cpufreq governor"
+	depends on CPU_FREQ
+	help
+		scary - a governor for cabbages
+
+		If in doubt, say N.
+
+config CPU_FREQ_GOV_SAVAGEDZEN
+	tristate "'savagedzen' cpufreq governor"
+	depends on CPU_FREQ
+	help
+		'Savaged-Zen' - a "smartass" based governor
+
+		If in doubt, say N.
 
 config CPU_FREQ_GOV_POWERSAVE
 	tristate "'powersave' governor"
@@ -166,29 +207,6 @@ config CPU_FREQ_GOV_ONDEMAND
 
 	  If in doubt, say N.
 
-config CPU_FREQ_GOV_ONDEMAND_2_PHASE
-	tristate "'2-phase' power-efficiency ondemand algorithm"
-	depends on CPU_FREQ_GOV_ONDEMAND
-	help
-	  '2-phase' - This driver adds a new algo to save power
-
-config CPU_FREQ_GOV_INTERACTIVE
-	tristate "'interactive' cpufreq policy governor"
-	help
-	  'interactive' - This driver adds a dynamic cpufreq policy governor
-	  designed for latency-sensitive workloads.
-
-	  This governor attempts to reduce the latency of clock
-	  increases so that the system is more responsive to
-	  interactive workloads.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called cpufreq_interactive.
-
-	  For details, take a look at linux/Documentation/cpu-freq.
-
-	  If in doubt, say N.
-
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
 	depends on CPU_FREQ
@@ -211,6 +229,47 @@ config CPU_FREQ_GOV_CONSERVATIVE
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
+config CPU_FREQ_GOV_INTERACTIVEX
+	tristate "'interactiveX' cpufreq policy governor"
+	help
+	  'InteractiveX' - Modified version of interactive with sleep+wake code.
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_SMARTASS2
+	tristate "'smartass2' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	  'Smartass2' - a slighly more aggressive smartass governor
+
+	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_SMARTASS
+	tristate "'smartass' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	  'smartass' - a "smart" optimized governor for the hero!
+
+	  If in doubt, say N.
+
+config CPU_FREQ_GOV_LIONHEART
+	tristate "'Lionheart' cpufreq governor"
+	depends on CPU_FREQ
+	help 
+	   Lionheart is a tweaked conservative with performance in mind.
+
+config CPU_FREQ_MIN_TICKS
+	int "Ticks between governor polling interval."
+	default 10
+	help
+	  Minimum number of ticks between polling interval for governors.
+
+config CPU_FREQ_SAMPLING_LATENCY_MULTIPLIER
+	int "Sampling rate multiplier for governors."
+	default 1000
+	help
+	  Sampling latency rate multiplied by the cpu switch latency.
+	  Affects governor polling.
 
 menu "x86 CPU frequency scaling drivers"
 depends on X86

@@ -580,7 +580,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -591,7 +591,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -602,7 +602,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -613,7 +613,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -624,7 +624,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -635,7 +635,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -646,7 +646,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -657,7 +657,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -668,7 +668,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 0,
 		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
+		.out_strength   = PM_GPIO_STRENGTH_LOW,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};
@@ -690,7 +690,7 @@ static int pm8058_gpios_init(void)
 		.output_value   = 1,
 		.pull           = PM_GPIO_PULL_NO,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.out_strength   = PM_GPIO_STRENGTH_LOW,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
 	};

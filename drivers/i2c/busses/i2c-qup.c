@@ -128,8 +128,6 @@ enum {
 
 #define QUP_MAX_CLK_STATE_RETRIES	300
 
-/*#define TEST_RECOVERY 1*/
-
 static char const * const i2c_rsrcs[] = {"i2c_clk", "i2c_sda"};
 
 static struct gpiomux_setting recovery_config = {
@@ -755,107 +753,6 @@ recovery_end:
 }
 
 static int
-QUP_i2c_recover_bus_busy(struct qup_i2c_dev *dev)
-{
-	int i;
-	uint32_t status = 0;
-	int gpio_clk = 0, gpio_dat = 0;
-	bool gpio_clk_status = false;
-
-	if (!dev) {
-		printk(KERN_ERR "%s: qup_i2c_dev == NULL\n", __func__);
-		return -1;
-	}
-
-	status = readl(dev->base + QUP_I2C_STATUS);
-	dev_warn(dev->dev, "%s: QUP_I2C_STATUS = 0x%x\n", __func__, status);
-
-	if (!(status & (I2C_STATUS_BUS_ACTIVE)) || (status & (I2C_STATUS_BUS_MASTER)))
-		return 0;
-
-	dev_warn(dev->dev, "%s: try to recover...\n", __func__);
-
-	if (dev->pdata && dev->pdata->msm_i2c_config_gpio)
-		dev->pdata->msm_i2c_config_gpio(dev->adapter.nr, 0);
-	else {
-		dev_warn(dev->dev, "%s: dev->pdata->msm_i2c_config_gpio"
-				   " not exists_1\n", __func__);
-		return -EBUSY;
-	}
-
-	gpio_clk = dev->i2c_gpios[0];
-	gpio_dat = dev->i2c_gpios[1];
-
-	dev_info(dev->dev, "%s:"
-			   " dev->adapter.nr: %d, gpio_clk: %d, gpio_dat: %d\n",
-			     __func__, dev->adapter.nr, gpio_clk, gpio_dat);
-
-	if ((gpio_clk < 0) || (gpio_dat < 0)) {
-		dev_info(dev->dev, "%s: GPIO assignment is wrong\n", __func__);
-
-		/* Configure ALT funciton to QUP I2C*/
-		if (dev->pdata && dev->pdata->msm_i2c_config_gpio)
-			dev->pdata->msm_i2c_config_gpio(dev->adapter.nr, 1);
-		else {
-			dev_warn(dev->dev, "%s: "
-				"dev->pdata->msm_i2c_config_gpio"
-				" not exists_2\n", __func__);
-			return -EBUSY;
-		}
-
-		return 0;
-	}
-
-	dev_warn(dev->dev, "i2c_scl: %d, i2c_sda: %d\n",
-		 gpio_get_value(gpio_clk), gpio_get_value(gpio_dat));
-
-	for (i = 0; i < 9; i++) {
-		if (gpio_get_value(gpio_dat) && gpio_clk_status)
-			break;
-		gpio_direction_output(gpio_clk, 0);
-		udelay(5);
-		gpio_direction_output(gpio_dat, 0);
-		udelay(5);
-		gpio_direction_input(gpio_clk);
-		udelay(5);
-		if (!gpio_get_value(gpio_clk))
-			udelay(20);
-		if (!gpio_get_value(gpio_clk))
-			msleep(10);
-		gpio_clk_status = gpio_get_value(gpio_clk);
-		gpio_direction_input(gpio_dat);
-		udelay(5);
-	}
-
-	/* Configure ALT funciton to QUP I2C*/
-	if (dev->pdata && dev->pdata->msm_i2c_config_gpio)
-		dev->pdata->msm_i2c_config_gpio(dev->adapter.nr, 1);
-	else {
-		dev_warn(dev->dev, "%s: dev->pdata->msm_i2c_config_gpio"
-				   " not exists_2\n", __func__);
-		return -EBUSY;
-	}
-
-	udelay(10);
-
-	status = readl(dev->base + QUP_I2C_STATUS);
-	if (!(status & I2C_STATUS_BUS_ACTIVE)) {
-		dev_info(dev->dev, "Bus busy cleared after %d clock cycles, "
-			 "status %x\n",
-			 i, status);
-		return 0;
-	}
-
-	dev_warn(dev->dev, "[QUP_LATCH_ERR] Bus still busy, status %x\n",
-		 status);
-	return -EBUSY;
-}
-
-#ifdef TEST_RECOVERY
-int test_recovery[13];
-#endif /* TEST_RECOVERY */
-
-static int
 qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 {
 	DECLARE_COMPLETION_ONSTACK(complete);
@@ -883,24 +780,6 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		}
 		qup_i2c_pwr_mgmt(dev, 1);
 	}
-
-	/* Test recovery */
-#ifdef TEST_RECOVERY
-	if ((dev->adapter.nr <= 12) &&
-	    (test_recovery[dev->adapter.nr] == 1)) {
-
-		dev_info(dev->dev, "%s: dev->adapter.nr: %d\n",
-				   __func__, dev->adapter.nr);
-
-		disable_irq(dev->err_irq);
-		ret = QUP_i2c_recover_bus_busy(dev);
-		if (ret)
-			dev_err(dev->dev, "[QUP I2C Err] QUP_i2c_recover_bus_busy: ret = %d\n", ret);
-		enable_irq(dev->err_irq);
-
-		test_recovery[dev->adapter.nr] = 0;
-	}
-#endif /* TEST_RECOVERY */
 
 	/* Initialize QUP registers during first transfer */
 	if (dev->clk_ctl == 0) {
@@ -1430,11 +1309,6 @@ qup_i2c_probe(struct platform_device *pdev)
 
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
-
-#ifdef TEST_RECOVERY
-	for (i = 1; i < 13; i++)
-		test_recovery[i] = 1;
-#endif /* TEST_RECOVERY */
 
 	ret = i2c_add_numbered_adapter(&dev->adapter);
 	if (ret) {

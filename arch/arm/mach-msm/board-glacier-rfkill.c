@@ -218,21 +218,6 @@ static void glacier_config_bt_init(void)
 	/* BT_RESET_N */
 	gpio_set_value(GLACIER_GPIO_BT_RESET_N, 1);
 	mdelay(2);
-#if 0
-
-	/* BT_RESET_N */
-	gpio_configure(GLACIER_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-	mdelay(2);
-	/* BT_SHUTDOWN_N */
-	gpio_configure(GLACIER_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
-	mdelay(2);
-
-	/* BT_CHIP_WAKE */
-	gpio_configure(GLACIER_GPIO_BT_CHIP_WAKE,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
-#endif
 
 }
 
@@ -281,15 +266,8 @@ static void glacier_config_bt_off(void)
 	/* BT_RTS */
 	gpio_set_value(GLACIER_GPIO_BT_UART1_RTS, 1);
 
-	/* BT_CTS */
-
 	/* BT_TX */
 	gpio_set_value(GLACIER_GPIO_BT_UART1_TX, 1);
-
-	/* BT_RX */
-
-
-	/* BT_HOST_WAKE */
 
 	/* BT_CHIP_WAKE */
 	gpio_set_value(GLACIER_GPIO_BT_CHIP_WAKE, 0);
@@ -317,8 +295,6 @@ static int glacier_rfkill_probe(struct platform_device *pdev)
 	bool default_state = true;  /* off */
 
 	glacier_config_bt_init();	/* bt gpio initial config */
-	/* always turn on clock? */
-	/* htc_wifi_bt_sleep_clk_ctl(CLK_ON, ID_BT); */
 	mdelay(2);
 
 	bluetooth_set_power(NULL, default_state);

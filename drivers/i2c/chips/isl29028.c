@@ -1384,7 +1384,7 @@ static ssize_t ps_enable_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(ps_adc, 0664, ps_adc_show, ps_enable_store);
+static DEVICE_ATTR(ps_adc, 0666, ps_adc_show, ps_enable_store);
 
 static ssize_t ps_kadc_show(struct device *dev,
 			struct device_attribute *attr, char *buf)

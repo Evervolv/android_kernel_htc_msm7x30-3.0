@@ -80,6 +80,7 @@
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
+#include <mach/htc_headset_misc.h>
 #include <linux/cm3628.h>
 #include "devices.h"
 #include "timer.h"
@@ -196,8 +197,6 @@ static int vivow_ts_power(int on)
 	pr_info("[TP]%s: power %d\n", __func__, on);
 
 	if (on == 1) {
-		gpio_set_value(VIVOW_GPIO_TP_EN, 1);
-		msleep(5);
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(VIVOW_TP_RSTz), 1);
 	} else if (on == 2) {
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(VIVOW_TP_RSTz), 0);
@@ -379,54 +378,46 @@ static struct bma150_platform_data gsensor_platform_data = {
 	.chip_layout = 1,
 };
 
-static DEFINE_MUTEX(capella_cm3628_lock);
-static int als_power_control;
-static int __capella_cm3628_power(int on)
+static int pl_sensor_power_enable(char *power, unsigned volt)
 {
+	struct vreg *vreg_gp;
 	int rc;
-	struct vreg *vreg = vreg_get(0, "gp7");
 
-	if (!vreg) {
-		printk(KERN_ERR "%s: vreg error\n", __func__);
-		return -EIO;
-	}
-	rc = vreg_set_level(vreg, 2850);
+	if (power == NULL)
+		return EIO;
 
-	printk(KERN_DEBUG "%s: Turn the capella_cm3628 power %s\n",
-		__func__, (on) ? "on" : "off");
-
-	if (on) {
-		rc = vreg_enable(vreg);
-		if (rc < 0)
-			printk(KERN_ERR "%s: vreg enable failed\n", __func__);
-	} else {
-		rc = vreg_disable(vreg);
-		if (rc < 0)
-			printk(KERN_ERR "%s: vreg disable failed\n", __func__);
+	vreg_gp = vreg_get(NULL, power);
+	if (IS_ERR(vreg_gp)) {
+		pr_err("[cm3628 err][ps] %s: vreg_get(%s) failed (%ld)\n",
+			__func__, power, PTR_ERR(vreg_gp));
+		return EIO;
 	}
 
+	rc = vreg_set_level(vreg_gp, volt);
+	if (rc) {
+		pr_err("[cm3628 err][ps] %s: vreg wlan set %s level failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+
+	rc = vreg_enable(vreg_gp);
+	if (rc) {
+		pr_err("[cm3628 err][ps] %s: vreg enable %s failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
 	return rc;
 }
-
 static int capella_cm3628_power(int pwr_device, uint8_t enable)
 {
-	unsigned int old_status = 0;
-	int ret = 0, on = 0;
-	mutex_lock(&capella_cm3628_lock);
+	int ret = 0;
 
-	old_status = als_power_control;
-	if (enable)
-		als_power_control |= pwr_device;
+	printk(KERN_INFO "%s: system_rev %d\n", __func__, system_rev);
+	if (system_rev <= 1)/*XB*/
+		ret = pl_sensor_power_enable("gp7", 2850);
 	else
-		als_power_control &= ~pwr_device;
+		ret = pl_sensor_power_enable("gp4", 2850);
 
-	on = als_power_control ? 1 : 0;
-	if (old_status == 0 && on)
-		ret = __capella_cm3628_power(1);
-	else if (!on)
-		ret = __capella_cm3628_power(0);
-
-	mutex_unlock(&capella_cm3628_lock);
 	return ret;
 }
 
@@ -457,100 +448,16 @@ static struct i2c_board_info i2c_Sensors_devices[] = {
 		.irq = PM8058_GPIO_IRQ(PM8058_IRQ_BASE, VIVOW_GPIO_GSENSOR_INT),
 	},
 	{
-		I2C_BOARD_INFO(CM3628_I2C_NAME, 0xC0 >> 1),
+		I2C_BOARD_INFO(CM3628_I2C_NAME, 0x30 >> 1),
 		.platform_data = &cm3628_pdata,
-		.irq = PM8058_GPIO_IRQ(PM8058_IRQ_BASE, VIVOW_GPIO_PS_INT_N),
+		.irq = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_INT_N)),
 	},
 };
 
 
 static int pm8058_gpios_init(void)
 {
-	int rc, i;
-
-	struct pm8xxx_gpio_init_info tp_gpio_cfgs[] = {
-		{
-			PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_TP_INT_N),
-			{
-				.direction     = PM_GPIO_DIR_IN,
-				.output_buffer = 0,
-				.output_value  = 0,
-				.pull          = PM_GPIO_PULL_UP_31P5,
-				.vin_sel       = PM8058_GPIO_VIN_L5,
-				.out_strength  = 0,
-				.function      = PM_GPIO_FUNC_NORMAL,
-				.inv_int_pol   = 0,
-			},
-		},
-		{
-			PM8058_GPIO_PM_TO_SYS(VIVOW_TP_RSTz),
-			{
-				.direction     = PM_GPIO_DIR_OUT,
-				.output_buffer = PM_GPIO_OUT_BUF_CMOS,
-				.output_value  = 1,
-				.pull          = PM_GPIO_PULL_NO,
-				.vin_sel       = PM8058_GPIO_VIN_L5,
-				.out_strength  = PM_GPIO_STRENGTH_HIGH,
-				.function      = PM_GPIO_FUNC_NORMAL,
-				.inv_int_pol   = 0,
-			},
-		},
-	};
-#if 0
 	int rc;
-
-	struct pm8xxx_gpio_init_info sdc4_en = {
-		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC4_EN_N),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.inv_int_pol    = 0,
-			.out_strength   = PM_GPIO_STRENGTH_LOW,
-			.output_value   = 0,
-		},
-	};
-
-	struct pm8xxx_gpio_init_info haptics_enable = {
-		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_HAP_ENABLE),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.inv_int_pol    = 0,
-			.vin_sel        = 2,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-		},
-	};
-
-	struct pm8xxx_gpio_init_info hdmi_5V_en = {
-		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_HDMI_5V_EN_V3),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_VPH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.out_strength   = PM_GPIO_STRENGTH_LOW,
-			.output_value   = 0,
-		},
-	};
-#endif
-
-	struct pm8xxx_gpio_init_info gpio15 = {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_FLASH_EN),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
 
 	struct pm8xxx_gpio_init_info gpio18 = {
 		PM8058_GPIO_PM_TO_SYS(VIVOW_AUD_SPK_SD),
@@ -575,6 +482,17 @@ static int pm8058_gpios_init(void)
 			.vin_sel        = 6,
 			.out_strength   = PM_GPIO_STRENGTH_LOW,
 			.function       = PM_GPIO_FUNC_NORMAL,
+		}
+	};
+
+	struct pm8xxx_gpio_init_info gpio22 = { /* cm3628 P/L-sensor */
+		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_INT_N),
+		{
+			.direction	= PM_GPIO_DIR_IN,
+			.pull		= PM_GPIO_PULL_UP_31P5,
+			.vin_sel	= PM8058_GPIO_VIN_L7,
+			.function	= PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol	= 0,
 		}
 	};
 
@@ -620,12 +538,25 @@ static int pm8058_gpios_init(void)
 	struct pm8xxx_gpio_init_info compass_gpio = {
 		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_COMPASS_INT_N),
 		{
-			.direction      = PM_GPIO_DIR_IN,
+		.direction      = PM_GPIO_DIR_IN,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 0,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM8058_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
+		.function       = PM_GPIO_FUNC_NORMAL,
+		}
+	};
+
+	struct pm8xxx_gpio_init_info flashlight_gpio = {
+		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_FLASH_EN),
+		{
+			.direction      = PM_GPIO_DIR_OUT,
 			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 			.output_value   = 0,
 			.pull           = PM_GPIO_PULL_NO,
 			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_NO,
+			.out_strength   = PM_GPIO_STRENGTH_HIGH,
 			.function       = PM_GPIO_FUNC_NORMAL,
 		}
 	};
@@ -635,155 +566,54 @@ static int pm8058_gpios_init(void)
 		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_SDMC_CD_N),
 		{
 			.direction      = PM_GPIO_DIR_IN,
-			.pull           = PM_GPIO_PULL_UP_31P5,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
+			.pull           = PM_GPIO_PULL_UP_1P5,
+			.vin_sel        = 2,
 			.function       = PM_GPIO_FUNC_NORMAL,
 			.inv_int_pol    = 0,
 		},
 	};
+
+	rc = pm8xxx_gpio_config(sdcc_det.gpio, &sdcc_det.config);
+	if (rc) {
+		pr_err("%s GPIO_SDMC_CD_N config failed\n", __func__);
+		return rc;
+	}
 #endif
-
-	struct pm8xxx_gpio_init_info psensor_gpio = {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_INT_N),
-		{
-			.direction      = PM_GPIO_DIR_IN,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_UP_31P5,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_NO,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-	struct pm8xxx_gpio_init_info psensor_gpio_LS_EN= {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_LS_EN),
-	{
-			.direction      = PM_GPIO_DIR_OUT,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-	struct pm8xxx_gpio_init_info psensor_gpio_en = {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_EN),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-	rc = pm8xxx_gpio_config(psensor_gpio.gpio, &psensor_gpio.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_PS_INT_N config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_PS_INT_N config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(psensor_gpio_LS_EN.gpio, &psensor_gpio_LS_EN.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_LS_EN config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_LS_EN config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(psensor_gpio_en.gpio, &psensor_gpio_en.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_PS_EN config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_PS_EN config ok\n", __func__);
-
-	/* Headset */
-	/*
-	rc = pm8xxx_gpio_config(charm_gpio_1.gpio, &charm_gpio_1.config);
-	if (rc) {
-		pr_info("[HS_BOARD] (%s) CHARM_SEL1 config failed\n", __func__);
-		return rc;
-	}
-
-	rc = pm8xxx_gpio_config(charm_gpio_2.gpio, &charm_gpio_2.config);
-	if (rc) {
-		pr_info("[HS_BOARD] (%s) CHARM_SEL2 config failed\n", __func__);
-		return rc;
-	}
-
-	rc = pm8xxx_gpio_config(psensor_gpio.gpio, &psensor_gpio.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_PS_INT_N config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_PS_INT_N config ok\n", __func__);
-	*/
-	rc = pm8xxx_gpio_config(gpio15.gpio, &gpio15.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_FLASH_EN config failed\n", __func__);
-		return rc;
-	}
-
 	rc = pm8xxx_gpio_config(gpio18.gpio, &gpio18.config);
 	if (rc) {
-		pr_err("%s vivow_AUD_SPK_SD config failed\n", __func__);
+		pr_err("%s AUD_SPK_SD config failed\n", __func__);
 		return rc;
 	}
 
 	rc = pm8xxx_gpio_config(gpio19.gpio, &gpio19.config);
 	if (rc) {
-		pr_err("%s vivow_AUD_AMP_EN config failed\n", __func__);
+		pr_err("%s VIVOW_AUD_AMP_EN config failed\n", __func__);
 		return rc;
 	}
-/*
-	if (machine_is_msm8x55_svlte_surf() || machine_is_msm8x55_svlte_ffa() ||
-						machine_is_msm7x30_fluid())
-		hdmi_5V_en.gpio = PMIC_GPIO_HDMI_5V_EN_V2;
-	else
-		hdmi_5V_en.gpio = PMIC_GPIO_HDMI_5V_EN_V3;
 
-	hdmi_5V_en.gpio = PM8058_GPIO_PM_TO_SYS(hdmi_5V_en.gpio);
-
-	rc = pm8xxx_gpio_config(hdmi_5V_en.gpio, &hdmi_5V_en.config);
+	rc = pm8xxx_gpio_config(flashlight_gpio.gpio, &flashlight_gpio.config);
 	if (rc) {
-		pr_err("%s PMIC_GPIO_HDMI_5V_EN config failed\n", __func__);
+		pr_err("%s VIVOW_GPIO_FLASH_EN config failed\n", __func__);
 		return rc;
 	}
-*/
+
+	rc = pm8xxx_gpio_config(gpio22.gpio, &gpio22.config);
+	if (rc) {
+		pr_err("%s PMIC_GPIO_PS_INT_N config failed\n", __func__);
+		return rc;
+	}
+
 	rc = pm8xxx_gpio_config(gpio24.gpio, &gpio24.config);
 	if (rc) {
-		pr_err("%s PMIC_GPIO_VIVOW_GREEN_LED config failed\n", __func__);
+		pr_err("%s PMIC_GPIO_WLAN_EXT_POR config failed\n", __func__);
 		return rc;
 	}
 
 	rc = pm8xxx_gpio_config(gpio25.gpio, &gpio25.config);
 	if (rc) {
-		pr_err("%s PMIC_GPIO_VIVOW_GREEN_GREEN config failed\n", __func__);
+		pr_err("%s PMIC_GPIO_WLAN_EXT_POR config failed\n", __func__);
 		return rc;
 	}
-
-	for (i = 0; i < ARRAY_SIZE(tp_gpio_cfgs); ++i) {
-		rc = pm8xxx_gpio_config(tp_gpio_cfgs[i].gpio,
-					&tp_gpio_cfgs[i].config);
-		if (rc < 0) {
-			pr_err("[TP] pmic gpio cfg (%d) failed\n", i);
-			return rc;
-		}
-	}
-
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
-	if (machine_is_msm7x30_fluid())
-		sdcc_det.config.inv_int_pol = 1;
-
-	rc = pm8xxx_gpio_config(sdcc_det.gpio, &sdcc_det.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_SDMC_CD_N config failed\n", __func__);
-		return rc;
-	}
-#endif
 
 	keypad_gpio.gpio = VIVOW_VOL_UP;
 	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
@@ -792,38 +622,11 @@ static int pm8058_gpios_init(void)
 
 	rc = pm8xxx_gpio_config(compass_gpio.gpio, &compass_gpio.config);
 	if (rc) {
-		pr_err("%s VIVOW_GPIO_COMPASS_INT_N config failed\n", __func__);
+		pr_err("%s GPIO_COMPASS_INT_N config failed\n", __func__);
 		return rc;
-	} else
-		pr_info("%s [AKM8975] VIVOW_GPIO_COMPASS_INT_N config ok\n",
-				__func__);
-
-#if 0
-	if (machine_is_msm7x30_fluid()) {
-		/* Haptics gpio */
-		rc = pm8xxx_gpio_config(haptics_enable.gpio,
-						&haptics_enable.config);
-		if (rc) {
-			pr_err("%s: PMIC GPIO %d write failed\n", __func__,
-							haptics_enable.gpio);
-			return rc;
-		}
-		/* SCD4 gpio */
-		rc = pm8xxx_gpio_config(sdc4_en.gpio, &sdc4_en.config);
-		if (rc) {
-			pr_err("%s PMIC_GPIO_SDC4_EN_N config failed\n",
-								 __func__);
-			return rc;
-		}
-		rc = gpio_request(sdc4_en.gpio, "sdc4_en");
-		if (rc) {
-			pr_err("%s PMIC_GPIO_SDC4_EN_N gpio_request failed\n",
-				__func__);
-			return rc;
-		}
-		gpio_set_value_cansleep(sdc4_en.gpio, 0);
+	} else {
+		pr_info("%s [AKM8975] GPIO_COMPASS_INT_N config ok\n", __func__);
 	}
-#endif
 
 	return 0;
 }
@@ -1075,8 +878,6 @@ static struct matrix_keymap_data fluid_keymap_data = {
 	.keymap_size	= ARRAY_SIZE(fluid_keymap),
 	.keymap		= fluid_keymap,
 };
-
-
 
 static struct pm8xxx_keypad_platform_data fluid_keypad_data = {
 	.input_name		= "fluid-keypad",
@@ -2665,6 +2466,37 @@ static void msm7x30_cfg_smsc911x(void)
 #endif
 
 #ifdef CONFIG_USB_G_ANDROID
+#ifdef CONFIG_USB_GADGET_VERIZON_PRODUCT_ID
+static int vivow_usb_product_id_match(int product_id, int intrsharing)
+{
+	int *pid_array = vivow_usb_product_id_match_array;
+	int *rndis_array = vivow_usb_product_id_rndis;
+
+	if (!pid_array)
+		return product_id;
+
+	/* VZW pid re-match will not apply on MFG mode */
+	if (board_mfg_mode() == 1)
+		return product_id;
+
+	while (pid_array[0] >= 0) {
+		if (product_id == pid_array[0])
+			return pid_array[1];
+		pid_array += 2;
+	}
+
+	if (product_id == 0x0ffe) {
+		/* rndis */
+		if (intrsharing)
+			return rndis_array[0];
+		else
+			return rndis_array[1];
+	}
+
+	return product_id;
+}
+#endif
+
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id		= 0x0bb4,
 	.product_id		= 0x0cad,
@@ -2677,7 +2509,10 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.functions		= usb_functions_all,
 	.fserial_init_string	= "tty:modem,tty,tty:serial",
 	.nluns			= 1,
-	.usb_id_pin_gpio	= VIVOW_GPIO_USB_ID_PIN,
+#ifdef CONFIG_USB_GADGET_VERIZON_PRODUCT_ID
+	.match			= vivow_usb_product_id_match,
+#endif
+	.usb_id_pin_gpio        = VIVOW_GPIO_USB_ID_PIN,
 };
 
 static struct platform_device android_usb_device = {
@@ -3010,16 +2845,90 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	},
 };
 
+static struct resource qsd_spi_resources[] = {
+	{
+		.name   = "spi_irq_in",
+		.start	= INT_SPI_INPUT,
+		.end	= INT_SPI_INPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_out",
+		.start	= INT_SPI_OUTPUT,
+		.end	= INT_SPI_OUTPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_err",
+		.start	= INT_SPI_ERROR,
+		.end	= INT_SPI_ERROR,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_base",
+		.start	= 0xA8000000,
+		.end	= 0xA8000000 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name   = "spidm_channels",
+		.flags  = IORESOURCE_DMA,
+	},
+	{
+		.name   = "spidm_crci",
+		.flags  = IORESOURCE_DMA,
+	},
+};
+
+#define AMDH0_BASE_PHYS		0xAC200000
+#define ADMH0_GP_CTL		(ct_adm_base + 0x3D8)
+static int msm_qsd_spi_dma_config(void)
+{
+	void __iomem *ct_adm_base = 0;
+	u32 spi_mux = 0;
+	int ret = 0;
+
+	ct_adm_base = ioremap(AMDH0_BASE_PHYS, PAGE_SIZE);
+	if (!ct_adm_base) {
+		pr_err("%s: Could not remap %x\n", __func__, AMDH0_BASE_PHYS);
+		return -ENOMEM;
+	}
+
+	spi_mux = (ioread32(ADMH0_GP_CTL) & (0x3 << 12)) >> 12;
+
+	qsd_spi_resources[4].start  = DMOV_USB_CHAN;
+	qsd_spi_resources[4].end    = DMOV_TSIF_CHAN;
+
+	switch (spi_mux) {
+	case (1):
+		qsd_spi_resources[5].start  = DMOV_HSUART1_RX_CRCI;
+		qsd_spi_resources[5].end    = DMOV_HSUART1_TX_CRCI;
+		break;
+	case (2):
+		qsd_spi_resources[5].start  = DMOV_HSUART2_RX_CRCI;
+		qsd_spi_resources[5].end    = DMOV_HSUART2_TX_CRCI;
+		break;
+	case (3):
+		qsd_spi_resources[5].start  = DMOV_CE_OUT_CRCI;
+		qsd_spi_resources[5].end    = DMOV_CE_IN_CRCI;
+		break;
+	default:
+		ret = -ENOENT;
+	}
+
+	iounmap(ct_adm_base);
+
+	return ret;
+}
+
 #ifdef CONFIG_SPI_QSD
 static struct spi_board_info msm_spi_board_info[] __initdata = {
 	{
                 .modalias       = "spi_qsd",
                 .mode           = SPI_MODE_3,
-//              .irq            = MSM_GPIO_TO_INT(51),
                 .bus_num        = 0,
                 .chip_select    = 2,
                 .max_speed_hz   = 10000000,
-//              .platform_data  = &bma_pdata,
         },
 	{
 		.modalias	= "spi_aic3254",
@@ -3029,6 +2938,7 @@ static struct spi_board_info msm_spi_board_info[] __initdata = {
 		.max_speed_hz   = 9963243,
 	}
 };
+
 #endif
 
 static struct msm_gpio qsd_spi_gpio_config_data[] = {
@@ -3040,12 +2950,8 @@ static struct msm_gpio qsd_spi_gpio_config_data[] = {
 
 static int msm_qsd_spi_gpio_config(void)
 {
-#if 0
 	return msm_gpios_request_enable(qsd_spi_gpio_config_data,
 		ARRAY_SIZE(qsd_spi_gpio_config_data));
-#else
-	return 0;
-#endif
 }
 
 static void msm_qsd_spi_gpio_release(void)
@@ -3060,6 +2966,7 @@ static struct msm_spi_platform_data qsd_spi_pdata = {
 	.max_clock_speed = 26331429,
 	.gpio_config  = msm_qsd_spi_gpio_config,
 	.gpio_release = msm_qsd_spi_gpio_release,
+	.dma_config = msm_qsd_spi_dma_config,
 };
 
 static void __init msm_qsd_spi_init(void)
@@ -3071,7 +2978,6 @@ static uint32_t usb_ID_PIN_output_table[] = {
 	GPIO_CFG(VIVOW_GPIO_USB_ID_PIN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
-
 static uint32_t usb_ID_PIN_input_table[] = {
 	GPIO_CFG(VIVOW_GPIO_USB_ID_PIN, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 	GPIO_CFG(VIVOW_GPIO_USB_ID1_PIN, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
@@ -3080,17 +2986,15 @@ static uint32_t usb_ID_PIN_input_table[] = {
 void config_vivow_usb_id_gpios(bool output)
 {
 	if (output) {
-		gpio_tlmm_config(usb_ID_PIN_output_table[0], GPIO_CFG_ENABLE);
+		config_gpio_table(usb_ID_PIN_output_table, ARRAY_SIZE(usb_ID_PIN_output_table));
 		gpio_set_value(VIVOW_GPIO_USB_ID_PIN, 1);
-		printk(KERN_INFO "%s %d output high\n", __func__, VIVOW_GPIO_USB_ID_PIN);
+		printk(KERN_INFO "%s %d output high\n",  __func__, VIVOW_GPIO_USB_ID_PIN);
 	} else {
-		gpio_tlmm_config(usb_ID_PIN_input_table[0], GPIO_CFG_ENABLE);
-		gpio_tlmm_config(usb_ID_PIN_input_table[1], GPIO_CFG_ENABLE);
-		printk(KERN_INFO "%s %d input none pull\n", __func__, VIVOW_GPIO_USB_ID_PIN);
-		printk(KERN_INFO "%s %d input none pull\n", __func__, VIVOW_GPIO_USB_ID1_PIN);
+		config_gpio_table(usb_ID_PIN_input_table, ARRAY_SIZE(usb_ID_PIN_input_table));
+		printk(KERN_INFO "%s %d input none pull\n",  __func__, VIVOW_GPIO_USB_ID_PIN);
+		printk(KERN_INFO "%s %d input none pull\n",  __func__, VIVOW_GPIO_USB_ID1_PIN);
 	}
 }
-
 
 #define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
 int64_t vivow_get_usbid_adc(void)
@@ -3386,23 +3290,10 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
 	.memory_type = MEMTYPE_EBI1,
 };
 
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
-       .name = "pmem_audio",
-       .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-       .cached = 0,
-	.memory_type = MEMTYPE_EBI1,
-};
-
 static struct platform_device android_pmem_adsp_device = {
        .name = "android_pmem",
        .id = 2,
        .dev = { .platform_data = &android_pmem_adsp_pdata },
-};
-
-static struct platform_device android_pmem_audio_device = {
-       .name = "android_pmem",
-       .id = 4,
-       .dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
@@ -3531,6 +3422,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_MODEM,
 	.charger = SWITCH_CHARGER_TPS65200,
 	.m2a_cable_detect = 1,
+	.charger_re_enable = 1,
 };
 
 static struct platform_device htc_battery_pdev = {
@@ -3784,7 +3676,6 @@ static struct platform_device pm8058_leds = {
 };
 
 /* HTC_HEADSET_GPIO Driver */
-
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
 	.hpin_gpio		= VIVOW_GPIO_35MM_HEADSET_DET,
 	.key_enable_gpio	= 0,
@@ -3800,19 +3691,17 @@ static struct platform_device htc_headset_gpio = {
 };
 
 /* HTC_HEADSET_PMIC Driver */
-
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY |
-				  DRIVER_HS_PMIC_DYNAMIC_THRESHOLD,
+	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY,
 	.hpin_gpio		= 0,
 	.hpin_irq		= 0,
 	.key_gpio		= 0,
 	.key_irq		= 0,
 	.key_enable_gpio	= 0,
 	.adc_mic		= 0,
-	.adc_remote		= {0, 2342, 2343, 7463, 7464, 12592},
-	.hs_controller		= HS_PMIC_CONTROLLER_2,
-	.hs_switch		= HS_PMIC_SC_SWITCH_TYPE,
+	.adc_remote		= {0, 2502, 2892, 6144, 7230, 12592},
+	.hs_controller		= 0,
+	.hs_switch		= 0,
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -3823,7 +3712,7 @@ static struct platform_device htc_headset_pmic = {
 	},
 };
 
-
+/* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
 	&htc_headset_pmic,
 	&htc_headset_gpio,
@@ -3833,33 +3722,28 @@ static struct platform_device *headset_devices[] = {
 static struct headset_adc_config htc_headset_mgr_config[] = {
 	{
 		.type = HEADSET_MIC,
-		.adc_max = 55426,
-		.adc_min = 38237,
+		.adc_max = 57840,
+		.adc_min = 38252,
 	},
 	{
 		.type = HEADSET_BEATS,
-		.adc_max = 38236,
-		.adc_min = 30586,
+		.adc_max = 38251,
+		.adc_min = 30494,
 	},
 	{
 		.type = HEADSET_BEATS_SOLO,
-		.adc_max = 30585,
-		.adc_min = 20292,
-	},
-	{
-		.type = HEADSET_NO_MIC, /* HEADSET_INDICATOR */
-		.adc_max = 20291,
-		.adc_min = 7285,
+		.adc_max = 30493,
+		.adc_min = 12968,
 	},
 	{
 		.type = HEADSET_NO_MIC,
-		.adc_max = 7284,
+		.adc_max = 12967,
 		.adc_min = 0,
 	},
 };
 
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
-	.driver_flag		= DRIVER_HS_MGR_RPC_SERVER | DRIVER_HS_MGR_OLD_AJ,
+	.driver_flag		= DRIVER_HS_MGR_RPC_SERVER,
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
 	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),
@@ -3873,7 +3757,6 @@ static struct platform_device htc_headset_mgr = {
 		.platform_data	= &htc_headset_mgr_data,
 	},
 };
-
 
 static struct platform_device *devices[] __initdata = {
 	&ram_console_device,
@@ -3916,7 +3799,6 @@ static struct platform_device *devices[] __initdata = {
 	&msm_rotator_device,
 #endif
 	&android_pmem_adsp_device,
-	&android_pmem_audio_device,
 	&msm_device_i2c,
 	&msm_device_i2c_2,
 	&hs_device,
@@ -5279,6 +5161,12 @@ void vivow_add_usb_devices(void)
 	if (get_radio_flag() & 0x20000)
 		android_usb_pdata.diag_init = 1;
 
+	/* add cdrom support in normal mode */
+	if (board_mfg_mode() == 0) {
+		android_usb_pdata.nluns = 2;
+		android_usb_pdata.cdrom_lun = 0x2;
+	}
+
 	msm_device_gadget_peripheral.dev.parent = &msm_device_otg.dev;
 	config_vivow_usb_id_gpios(0);
 	platform_device_register(&msm_device_gadget_peripheral);
@@ -5486,7 +5374,6 @@ static int __init pmem_sf_size_setup(char *p)
 	pmem_sf_size = memparse(p, NULL);
 	return 0;
 }
-
 early_param("pmem_sf_size", pmem_sf_size_setup);
 
 static unsigned fb_size = MSM_FB_SIZE;
@@ -5505,14 +5392,6 @@ static int __init pmem_adsp_size_setup(char *p)
 }
 early_param("pmem_adsp_size", pmem_adsp_size_setup);
 
-static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
-static int __init pmem_audio_size_setup(char *p)
-{
-	pmem_audio_size = memparse(p, NULL);
-	return 0;
-}
-early_param("pmem_audio_size", pmem_audio_size_setup);
-
 static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -5520,7 +5399,10 @@ static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
 	[MEMTYPE_EBI1] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
+		.start	=	PMEM_KERNEL_EBI1_BASE,
+		.limit	=	PMEM_KERNEL_EBI1_SIZE,
+		.size	=	PMEM_KERNEL_EBI1_SIZE,
+		.flags	=	MEMTYPE_FLAGS_FIXED,
 	},
 };
 
@@ -5535,14 +5417,11 @@ static void __init size_pmem_device(struct android_pmem_platform_data *pdata, un
 		pr_info("%s: pmem %s requests %lu bytes dynamically.\r\n",
 			__func__, pdata->name, size);
 }
-
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
-	size_pmem_device(&android_pmem_adsp_pdata, 0, pmem_adsp_size);
-	size_pmem_device(&android_pmem_audio_pdata, 0, pmem_audio_size);
-	size_pmem_device(&android_pmem_pdata, 0, pmem_sf_size);
-	msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
+	size_pmem_device(&android_pmem_adsp_pdata, MSM_PMEM_ADSP_BASE, pmem_adsp_size);
+	size_pmem_device(&android_pmem_pdata, MSM_PMEM_SF_BASE, pmem_sf_size);
 #endif
 }
 
@@ -5558,7 +5437,6 @@ static void __init reserve_pmem_memory(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
-	reserve_memory_for(&android_pmem_audio_pdata);
 	reserve_memory_for(&android_pmem_pdata);
 #endif
 }
@@ -5572,7 +5450,7 @@ static void __init msm7x30_calculate_reserve_sizes(void)
 static int msm7x30_paddr_to_memtype(unsigned int paddr)
 {
 	if (paddr < 0x40000000)
-		return MEMTYPE_EBI1;
+		return MEMTYPE_EBI0;
 	if (paddr >= 0x40000000 && paddr < 0x80000000)
 		return MEMTYPE_EBI1;
 	return MEMTYPE_NONE;
@@ -5592,16 +5470,13 @@ static void __init vivow_reserve(void)
 
 static void __init vivow_allocate_memory_regions(void)
 {
-	void *addr;
 	unsigned long size;
 
-	size = fb_size ? : MSM_FB_SIZE;
-	addr = alloc_bootmem_align(size, 0x1000);
-	msm_fb_resources[0].start = __pa(addr);
-	msm_fb_base = msm_fb_resources[0].start;
+	size = MSM_FB_SIZE;
+	msm_fb_resources[0].start = MSM_FB_BASE;
 	msm_fb_resources[0].end = msm_fb_resources[0].start + size - 1;
-	printk("allocating %lu bytes at %p (%lx physical) for fb\n",
-			size, addr, __pa(addr));
+	pr_info("allocating %lu bytes at 0x%p (0x%lx physical) for fb\n",
+		size, __va(MSM_FB_BASE), (unsigned long) MSM_FB_BASE);
 }
 
 static void __init vivow_map_io(void)
@@ -5621,16 +5496,13 @@ static void __init vivow_init_early(void)
 static void __init vivow_fixup(struct machine_desc *desc, struct tag *tags,
 								char **cmdline, struct meminfo *mi)
 {
-	int mem = parse_tag_memsize((const struct tag *)tags);
 	engineerid = parse_tag_engineerid(tags);
 
 	mi->nr_banks = 2;
 	mi->bank[0].start = MSM_LINUX_BASE1;
-	mi->bank[0].size = MSM_LINUX_SIZE1;
+	mi->bank[0].size = MSM_LINUX_SIZE1 + MSM_MEM_256MB_OFFSET;
 	mi->bank[1].start = MSM_LINUX_BASE2;
 	mi->bank[1].size = MSM_LINUX_SIZE2;
-	if (mem == 768)
-		mi->bank[0].size += MSM_MEM_256MB_OFFSET;
 }
 
 MACHINE_START(VIVOW, "vivow")

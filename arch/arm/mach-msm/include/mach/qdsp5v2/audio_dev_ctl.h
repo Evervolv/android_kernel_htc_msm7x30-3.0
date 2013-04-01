@@ -65,9 +65,6 @@ struct msm_snddev_info {
 	u32 set_sample_rate;
 	u32 sessions;
 	u32 vol_idx;
-	int usage_count;
-	s32 max_voc_rx_vol[VOC_RX_VOL_ARRAY_NUM]; /* [0] is for NB,[1] for WB */
-	s32 min_voc_rx_vol[VOC_RX_VOL_ARRAY_NUM];
 };
 
 struct msm_volume {
@@ -77,9 +74,6 @@ struct msm_volume {
 
 extern struct msm_volume msm_vol_ctl;
 
-int msm_get_dual_mic_config(int enc_session_id);
-int msm_set_dual_mic_config(int enc_session_id, int config);
-int msm_reset_all_device(void);
 void msm_snddev_register(struct msm_snddev_info *);
 void msm_snddev_unregister(struct msm_snddev_info *);
 int msm_snddev_devcount(void);
@@ -119,14 +113,6 @@ struct auddev_evt_audcal_info {
 	u32 sessions;
 };
 
-struct auddev_evt_devinfo {
-	u32 dev_id;
-	u32 acdb_id;
-	u32 sample_rate;
-	u32 dev_type;
-	u32 sessions;
-};
-
 union msm_vol_mute {
 	int vol;
 	bool mute;
@@ -152,7 +138,6 @@ union auddev_evt_data {
 	s32 session_vol;
 	s32 voice_state;
 	struct auddev_evt_audcal_info audcal_info;
-	struct auddev_evt_devinfo devinfo;
 };
 
 struct message_header {
@@ -170,8 +155,7 @@ struct message_header {
 #define AUDDEV_EVT_STREAM_VOL_CHG	0x80 	/* device volume changed */
 #define AUDDEV_EVT_FREQ_CHG		0x100	/* Change in freq */
 #define AUDDEV_EVT_VOICE_STATE_CHG	0x200   /* Change in voice state */
-#define AUDDEV_EVT_DEVICE_INFO		0x400	/* routed device information
-							event */
+#define AUDDEV_EVT_DEVICE_INFO		0x400	/* routed device information */
 
 #define AUDDEV_CLNT_VOC 		0x1	/* Vocoder clients */
 #define AUDDEV_CLNT_DEC 		0x2	/* Decoder clients */
@@ -218,8 +202,4 @@ int msm_set_voice_vol(int dir, s32 volume);
 int msm_set_voice_mute(int dir, int mute);
 int msm_get_call_state(void);
 int msm_get_voice_state(void);
-#ifdef CONFIG_DEBUG_FS
-bool is_dev_opened(u32 acdb_id);
-#endif
-
 #endif

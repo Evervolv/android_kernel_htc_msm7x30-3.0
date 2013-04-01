@@ -628,6 +628,8 @@ err_register_lcd_bl:
 
 static struct resource resources_msm_fb[] = {
 	{
+		.start = MSM_FB_BASE,
+		.end = MSM_FB_BASE + MSM_FB_SIZE - 1,
 		.flags = IORESOURCE_MEM,
 	},
 };
@@ -1109,9 +1111,6 @@ int __init vivow_init_panel(void)
 		pr_err("%s: failed to get axi clock\n", __func__);
 		return PTR_ERR(axi_clk);
 	}
-
-	resources_msm_fb[0].start = msm_fb_base;
-	resources_msm_fb[0].end = msm_fb_base + MSM_FB_SIZE - 1;
 
 	msm_device_mddi0.dev.platform_data = &mddi_pdata;
 	rc = platform_device_register(&msm_device_mddi0);

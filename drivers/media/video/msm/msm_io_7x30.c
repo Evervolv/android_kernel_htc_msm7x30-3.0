@@ -557,13 +557,16 @@ int msm_camio_enable(struct platform_device *pdev)
 
 	camio_ext = camdev->ioext;
 
-	camdev->camera_gpio_on();
+	/*suggest per-sensor driver to config*/
+	/* camdev->camera_gpio_on(); */
 
 	msm_camio_clk_enable(CAMIO_VFE_PBDG_CLK);
 	msm_camio_clk_enable(CAMIO_CAMIF_PAD_PBDG_CLK);
+#ifndef CONFIG_MACH_GOLFC
 	if (!sinfo->use_rawchip) {
 		msm_camio_clk_enable(CAMIO_CAM_MCLK_CLK);
 	}
+#endif
 	if (!sinfo->csi_if) {
 		msm_camio_clk_enable(CAMIO_VFE_CLK);
 		camifpadio = request_mem_region(camio_ext.camifpadphy,
@@ -760,8 +763,15 @@ int msm_camio_probe_off(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sinfo = pdev->dev.platform_data;
 	struct msm_camera_device_platform_data *camdev = sinfo->pdata;
+#ifdef CONFIG_MACH_GOLFC
+	int rc = 0;
+	rc = msm_camio_clk_disable(CAMIO_CAM_MCLK_CLK);
+	camdev->camera_gpio_off();
+	return rc;
+#else
 	camdev->camera_gpio_off();
 	return msm_camio_clk_disable(CAMIO_CAM_MCLK_CLK);
+#endif
 }
 
 int msm_camio_read_camif_status(void)

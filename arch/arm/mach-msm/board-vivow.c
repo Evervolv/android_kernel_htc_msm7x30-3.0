@@ -5161,6 +5161,12 @@ void vivow_add_usb_devices(void)
 	if (get_radio_flag() & 0x20000)
 		android_usb_pdata.diag_init = 1;
 
+	/* add cdrom support in normal mode */
+	if (board_mfg_mode() == 0) {
+		android_usb_pdata.nluns = 2;
+		android_usb_pdata.cdrom_lun = 0x2;
+	}
+
 	msm_device_gadget_peripheral.dev.parent = &msm_device_otg.dev;
 	config_vivow_usb_id_gpios(0);
 	platform_device_register(&msm_device_gadget_peripheral);

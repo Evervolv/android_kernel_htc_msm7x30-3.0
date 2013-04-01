@@ -217,7 +217,7 @@ static int acdb_get_config_table(uint32_t device_id, uint32_t sample_rate)
 		break;
 	}
 		if (n == db->entry_count) {
-		pr_aud_err("acdb: no entry for device %d, rate %d.\n",
+		pr_aud_info("acdb: no entry for device %d, rate %d.\n",
 		       device_id, sample_rate);
 		return 0;
 	}
@@ -737,7 +737,7 @@ s32 acdb_fill_audpp_iir(void)
 
 	acdb_iir = get_audpp_irr_block();
 	if (acdb_iir == NULL) {
-		pr_aud_err("unable to find  audpp iir block returning\n");
+		pr_aud_info("unable to find  audpp iir block returning\n");
 		return -1;
 	}
 	memset(acdb_data.pp_iir, 0, sizeof(*acdb_data.pp_iir));

@@ -37,7 +37,6 @@
 #define SNDDEV_CAP_FM 0x10 /* Support FM radio */
 #define SNDDEV_CAP_TTY 0x20 /* Support TTY */
 #define SNDDEV_CAP_ANC 0x40 /* Support ANC */
-#define SNDDEV_CAP_LB 0x80 /* Loopback */
 #define VOC_NB_INDEX	0
 #define VOC_WB_INDEX	1
 #define VOC_RX_VOL_ARRAY_NUM	2
@@ -45,8 +44,6 @@
 /* Device volume types . In Current deisgn only one of these are supported. */
 #define SNDDEV_DEV_VOL_DIGITAL  0x1  /* Codec Digital volume control */
 #define SNDDEV_DEV_VOL_ANALOG   0x2  /* Codec Analog volume control */
-
-#define SIDE_TONE_MASK	0x01
 
 #define Q5V2_HW_HANDSET	0
 #define Q5V2_HW_HEADSET	1

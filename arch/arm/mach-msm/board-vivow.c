@@ -879,8 +879,6 @@ static struct matrix_keymap_data fluid_keymap_data = {
 	.keymap		= fluid_keymap,
 };
 
-
-
 static struct pm8xxx_keypad_platform_data fluid_keypad_data = {
 	.input_name		= "fluid-keypad",
 	.input_phys_device	= "fluid-keypad/input0",
@@ -2468,6 +2466,37 @@ static void msm7x30_cfg_smsc911x(void)
 #endif
 
 #ifdef CONFIG_USB_G_ANDROID
+#ifdef CONFIG_USB_GADGET_VERIZON_PRODUCT_ID
+static int vivow_usb_product_id_match(int product_id, int intrsharing)
+{
+	int *pid_array = vivow_usb_product_id_match_array;
+	int *rndis_array = vivow_usb_product_id_rndis;
+
+	if (!pid_array)
+		return product_id;
+
+	/* VZW pid re-match will not apply on MFG mode */
+	if (board_mfg_mode() == 1)
+		return product_id;
+
+	while (pid_array[0] >= 0) {
+		if (product_id == pid_array[0])
+			return pid_array[1];
+		pid_array += 2;
+	}
+
+	if (product_id == 0x0ffe) {
+		/* rndis */
+		if (intrsharing)
+			return rndis_array[0];
+		else
+			return rndis_array[1];
+	}
+
+	return product_id;
+}
+#endif
+
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id		= 0x0bb4,
 	.product_id		= 0x0cad,
@@ -2480,7 +2509,10 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.functions		= usb_functions_all,
 	.fserial_init_string	= "tty:modem,tty,tty:serial",
 	.nluns			= 1,
-	.usb_id_pin_gpio	= VIVOW_GPIO_USB_ID_PIN,
+#ifdef CONFIG_USB_GADGET_VERIZON_PRODUCT_ID
+	.match			= vivow_usb_product_id_match,
+#endif
+	.usb_id_pin_gpio        = VIVOW_GPIO_USB_ID_PIN,
 };
 
 static struct platform_device android_usb_device = {

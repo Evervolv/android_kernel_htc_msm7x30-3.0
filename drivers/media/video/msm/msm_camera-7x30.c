@@ -2351,9 +2351,12 @@ int msm_camera_flash(struct msm_sync *sync, int level)
 #ifdef CONFIG_FLASH_BACKLIGHT_OFF
 		{
 		int rc = sync->sdata->flash_cfg->camera_flash(flash_level);
-		if (high_enabled == 1)
+		if (high_enabled == 1) {
+			pr_info("[CAM] sleep 400ms for turn off backlight: E\n");
+			msleep(400);
+			pr_info("[CAM] sleep 400ms for turn off backlight: X\n");
 			led_brightness_switch("lcd-backlight", LED_FULL);
-
+		}
 		high_enabled = 0;
 
 		return rc;
@@ -2380,6 +2383,10 @@ int msm_camera_flash(struct msm_sync *sync, int level)
 		pr_info("[CAM]%s: camera flash level = FL_MODE_FLASH_LEVEL6.(%d) \n", __func__, level);
 	case FL_MODE_FLASH_LEVEL7:
 		pr_info("[CAM]%s: camera flash level = FL_MODE_FLASH_LEVEL7.(%d) \n", __func__, level);
+#ifdef CONFIG_FLASH_BACKLIGHT_OFF
+		high_enabled = 1;
+                led_brightness_switch("lcd-backlight", LED_OFF);
+#endif
 		flash_level = level;
 		pr_info("[CAM]%s: flash_level = %d", __func__, flash_level);
 		break;
@@ -2626,8 +2633,6 @@ static long msm_ioctl_control(struct file *filep, unsigned int cmd,
 		rc = msm_ioctl_common(pmsm, cmd, argp);
 		break;
 	}
-
-	if (rc) pr_err("[CAM]%s: rc = %d\n", __func__, rc);
 
 	return rc;
 }

@@ -80,8 +80,6 @@ atomic_t irq_cnt;
 
 static struct vfe31_ctrl_type *vfe31_ctrl;
 static void  *vfe_syncdata;
-static struct clk *ebi1_clk;
-static const char *const clk_name = "ebi1_dcvs_clk";
 
 static uint8_t vfe_sof_irq_debug_cnt = 0;
 #define  vfe_sof_irq_debug_max_cnt 200
@@ -290,12 +288,19 @@ static void vfe_addr_convert(struct msm_vfe_phy_info *pinfo,
 		break;
 	} /* switch */
 }
-
-
+#if defined(CONFIG_MACH_KINGDOM)
+static int vfe_release=0;
+#endif
 static void vfe31_proc_ops(enum VFE31_MESSAGE_ID id, void *msg, size_t len)
 {
 	struct msm_vfe_resp *rp;
-
+#if defined(CONFIG_MACH_KINGDOM)
+	if (vfe_release)
+	{
+		printk("[CAM] ops return");
+		return;
+	}
+#endif
 	rp = vfe31_ctrl->resp->vfe_alloc(sizeof(struct msm_vfe_resp),
 		vfe31_ctrl->syncdata, GFP_ATOMIC);
 	if (!rp) {
@@ -471,16 +476,19 @@ static void vfe31_release(struct platform_device *pdev)
 	struct msm_sensor_ctrl *sctrl =
 		&((struct msm_sync *)vfe_syncdata)->sctrl;
 	struct msm_camera_sensor_info *sinfo = pdev->dev.platform_data;
+#if defined(CONFIG_MACH_KINGDOM)
 
+	vfe_release = 1;
+#endif
 	pr_info("[CAM] %s E\n", __func__);
 
 	if (!sinfo->csi_if) {
 		if (sctrl)
 			sctrl->s_release();
 	}
-#if defined(CONFIG_MACH_PRIMOU) || defined(CONFIG_MACH_PRIMOC)
+
         vfe_stop();
-#endif
+
 	vfemem = vfe31_ctrl->vfemem;
 	vfeio  = vfe31_ctrl->vfeio;
 
@@ -504,17 +512,11 @@ static void vfe31_release(struct platform_device *pdev)
 		if (sctrl)
 			sctrl->s_release();
 	}
-
+#ifndef CONFIG_MACH_GOLFC
 	/* for some sensor doesn't disable MCLK when sensor release */
 	if (!sinfo->use_rawchip)
 		msm_camio_probe_off(pdev);
-
-	if (ebi1_clk) {
-		clk_set_rate(ebi1_clk, 0);
-		clk_put(ebi1_clk);
-		ebi1_clk = 0;
-	}
-
+#endif
 	pr_info("[CAM] %s X\n", __func__);
 }
 
@@ -2582,7 +2584,7 @@ static void vfe31_process_multishot_frame(void)
 
 static void vfe31_process_output_path_irq_1(void)
 {
-	CDBG("[CAM] vfe31_process_output_path_irq_1, vfe_capture_count %d out1.free_buf.available %d\n",
+	pr_info("[CAM] vfe31_process_output_path_irq_1, vfe_capture_count %d out1.free_buf.available %d\n",
 				vfe31_ctrl->vfe_capture_count, vfe31_ctrl->outpath.out1.free_buf.available);
 
 	if ((vfe31_ctrl->operation_mode & 1)
@@ -3079,20 +3081,11 @@ static int vfe31_init(struct msm_vfe_callback *presp,
 	struct platform_device *dev)
 {
 	int rc = 0;
+#if defined(CONFIG_MACH_KINGDOM)
+	
+	vfe_release = 0;
+#endif
 	pr_info("[CAM]vfe31_init\n");
-
-	ebi1_clk = clk_get(NULL, clk_name);
-	if (!ebi1_clk) {
-		pr_err("[CAM]%s: could not get %s\n", __func__, clk_name);
-		return -EIO;
-	}
-
-	rc = clk_set_rate(ebi1_clk, 128000000);
-	if (rc < 0) {
-		pr_err("[CAM]%s: clk_set_rate(%s) failed: %d\n", __func__,
-			clk_name, rc);
-		return rc;
-	}
 
 	rc = vfe31_resource_init(presp, dev, vfe_syncdata);
 	if (rc < 0) {

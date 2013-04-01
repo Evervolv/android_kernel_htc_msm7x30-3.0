@@ -108,8 +108,6 @@
 #include "board-glacier.h"
 #include "board-msm7x30-regulator.h"
 
-int htc_get_usb_accessory_adc_level(uint32_t *buffer);
-
 #define GPIO_2MA	0
 #define GPIO_4MA	1
 #define GPIO_6MA	2
@@ -2156,6 +2154,7 @@ void config_glacier_usb_id_gpios(bool output)
 }
 
 static struct cable_detect_platform_data cable_detect_pdata = {
+	.detect_type 		= CABLE_TYPE_ID_PIN,
 	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID_PIN,
 	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
 	.dock_detect		= 1,

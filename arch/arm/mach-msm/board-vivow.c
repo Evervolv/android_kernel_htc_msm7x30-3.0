@@ -3390,6 +3390,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_MODEM,
 	.charger = SWITCH_CHARGER_TPS65200,
 	.m2a_cable_detect = 1,
+	.charger_re_enable = 1,
 };
 
 static struct platform_device htc_battery_pdev = {

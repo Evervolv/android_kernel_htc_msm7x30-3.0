@@ -378,54 +378,46 @@ static struct bma150_platform_data gsensor_platform_data = {
 	.chip_layout = 1,
 };
 
-static DEFINE_MUTEX(capella_cm3628_lock);
-static int als_power_control;
-static int __capella_cm3628_power(int on)
+static int pl_sensor_power_enable(char *power, unsigned volt)
 {
+	struct vreg *vreg_gp;
 	int rc;
-	struct vreg *vreg = vreg_get(0, "gp7");
 
-	if (!vreg) {
-		printk(KERN_ERR "%s: vreg error\n", __func__);
-		return -EIO;
-	}
-	rc = vreg_set_level(vreg, 2850);
+	if (power == NULL)
+		return EIO;
 
-	printk(KERN_DEBUG "%s: Turn the capella_cm3628 power %s\n",
-		__func__, (on) ? "on" : "off");
-
-	if (on) {
-		rc = vreg_enable(vreg);
-		if (rc < 0)
-			printk(KERN_ERR "%s: vreg enable failed\n", __func__);
-	} else {
-		rc = vreg_disable(vreg);
-		if (rc < 0)
-			printk(KERN_ERR "%s: vreg disable failed\n", __func__);
+	vreg_gp = vreg_get(NULL, power);
+	if (IS_ERR(vreg_gp)) {
+		pr_err("[cm3628 err][ps] %s: vreg_get(%s) failed (%ld)\n",
+			__func__, power, PTR_ERR(vreg_gp));
+		return EIO;
 	}
 
+	rc = vreg_set_level(vreg_gp, volt);
+	if (rc) {
+		pr_err("[cm3628 err][ps] %s: vreg wlan set %s level failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+
+	rc = vreg_enable(vreg_gp);
+	if (rc) {
+		pr_err("[cm3628 err][ps] %s: vreg enable %s failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
 	return rc;
 }
-
 static int capella_cm3628_power(int pwr_device, uint8_t enable)
 {
-	unsigned int old_status = 0;
-	int ret = 0, on = 0;
-	mutex_lock(&capella_cm3628_lock);
+	int ret = 0;
 
-	old_status = als_power_control;
-	if (enable)
-		als_power_control |= pwr_device;
+	printk(KERN_INFO "%s: system_rev %d\n", __func__, system_rev);
+	if (system_rev <= 1)/*XB*/
+		ret = pl_sensor_power_enable("gp7", 2850);
 	else
-		als_power_control &= ~pwr_device;
+		ret = pl_sensor_power_enable("gp4", 2850);
 
-	on = als_power_control ? 1 : 0;
-	if (old_status == 0 && on)
-		ret = __capella_cm3628_power(1);
-	else if (!on)
-		ret = __capella_cm3628_power(0);
-
-	mutex_unlock(&capella_cm3628_lock);
 	return ret;
 }
 
@@ -456,100 +448,16 @@ static struct i2c_board_info i2c_Sensors_devices[] = {
 		.irq = PM8058_GPIO_IRQ(PM8058_IRQ_BASE, VIVOW_GPIO_GSENSOR_INT),
 	},
 	{
-		I2C_BOARD_INFO(CM3628_I2C_NAME, 0xC0 >> 1),
+		I2C_BOARD_INFO(CM3628_I2C_NAME, 0x30 >> 1),
 		.platform_data = &cm3628_pdata,
-		.irq = PM8058_GPIO_IRQ(PM8058_IRQ_BASE, VIVOW_GPIO_PS_INT_N),
+		.irq = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_INT_N)),
 	},
 };
 
 
 static int pm8058_gpios_init(void)
 {
-	int rc, i;
-
-	struct pm8xxx_gpio_init_info tp_gpio_cfgs[] = {
-		{
-			PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_TP_INT_N),
-			{
-				.direction     = PM_GPIO_DIR_IN,
-				.output_buffer = 0,
-				.output_value  = 0,
-				.pull          = PM_GPIO_PULL_UP_31P5,
-				.vin_sel       = PM8058_GPIO_VIN_L5,
-				.out_strength  = 0,
-				.function      = PM_GPIO_FUNC_NORMAL,
-				.inv_int_pol   = 0,
-			},
-		},
-		{
-			PM8058_GPIO_PM_TO_SYS(VIVOW_TP_RSTz),
-			{
-				.direction     = PM_GPIO_DIR_OUT,
-				.output_buffer = PM_GPIO_OUT_BUF_CMOS,
-				.output_value  = 1,
-				.pull          = PM_GPIO_PULL_NO,
-				.vin_sel       = PM8058_GPIO_VIN_L5,
-				.out_strength  = PM_GPIO_STRENGTH_HIGH,
-				.function      = PM_GPIO_FUNC_NORMAL,
-				.inv_int_pol   = 0,
-			},
-		},
-	};
-#if 0
 	int rc;
-
-	struct pm8xxx_gpio_init_info sdc4_en = {
-		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC4_EN_N),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.inv_int_pol    = 0,
-			.out_strength   = PM_GPIO_STRENGTH_LOW,
-			.output_value   = 0,
-		},
-	};
-
-	struct pm8xxx_gpio_init_info haptics_enable = {
-		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_HAP_ENABLE),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.inv_int_pol    = 0,
-			.vin_sel        = 2,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-		},
-	};
-
-	struct pm8xxx_gpio_init_info hdmi_5V_en = {
-		PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_HDMI_5V_EN_V3),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_VPH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-			.out_strength   = PM_GPIO_STRENGTH_LOW,
-			.output_value   = 0,
-		},
-	};
-#endif
-
-	struct pm8xxx_gpio_init_info gpio15 = {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_FLASH_EN),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
 
 	struct pm8xxx_gpio_init_info gpio18 = {
 		PM8058_GPIO_PM_TO_SYS(VIVOW_AUD_SPK_SD),
@@ -574,6 +482,17 @@ static int pm8058_gpios_init(void)
 			.vin_sel        = 6,
 			.out_strength   = PM_GPIO_STRENGTH_LOW,
 			.function       = PM_GPIO_FUNC_NORMAL,
+		}
+	};
+
+	struct pm8xxx_gpio_init_info gpio22 = { /* cm3628 P/L-sensor */
+		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_INT_N),
+		{
+			.direction	= PM_GPIO_DIR_IN,
+			.pull		= PM_GPIO_PULL_UP_31P5,
+			.vin_sel	= PM8058_GPIO_VIN_L7,
+			.function	= PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol	= 0,
 		}
 	};
 
@@ -619,12 +538,25 @@ static int pm8058_gpios_init(void)
 	struct pm8xxx_gpio_init_info compass_gpio = {
 		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_COMPASS_INT_N),
 		{
-			.direction      = PM_GPIO_DIR_IN,
+		.direction      = PM_GPIO_DIR_IN,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 0,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM8058_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_NO,
+		.function       = PM_GPIO_FUNC_NORMAL,
+		}
+	};
+
+	struct pm8xxx_gpio_init_info flashlight_gpio = {
+		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_FLASH_EN),
+		{
+			.direction      = PM_GPIO_DIR_OUT,
 			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 			.output_value   = 0,
 			.pull           = PM_GPIO_PULL_NO,
 			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_NO,
+			.out_strength   = PM_GPIO_STRENGTH_HIGH,
 			.function       = PM_GPIO_FUNC_NORMAL,
 		}
 	};
@@ -634,155 +566,54 @@ static int pm8058_gpios_init(void)
 		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_SDMC_CD_N),
 		{
 			.direction      = PM_GPIO_DIR_IN,
-			.pull           = PM_GPIO_PULL_UP_31P5,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
+			.pull           = PM_GPIO_PULL_UP_1P5,
+			.vin_sel        = 2,
 			.function       = PM_GPIO_FUNC_NORMAL,
 			.inv_int_pol    = 0,
 		},
 	};
+
+	rc = pm8xxx_gpio_config(sdcc_det.gpio, &sdcc_det.config);
+	if (rc) {
+		pr_err("%s GPIO_SDMC_CD_N config failed\n", __func__);
+		return rc;
+	}
 #endif
-
-	struct pm8xxx_gpio_init_info psensor_gpio = {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_INT_N),
-		{
-			.direction      = PM_GPIO_DIR_IN,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_UP_31P5,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_NO,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-	struct pm8xxx_gpio_init_info psensor_gpio_LS_EN= {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_LS_EN),
-	{
-			.direction      = PM_GPIO_DIR_OUT,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-	struct pm8xxx_gpio_init_info psensor_gpio_en = {
-		PM8058_GPIO_PM_TO_SYS(VIVOW_GPIO_PS_EN),
-		{
-			.direction      = PM_GPIO_DIR_OUT,
-			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_NO,
-			.vin_sel        = PM8058_GPIO_VIN_L5,
-			.out_strength   = PM_GPIO_STRENGTH_HIGH,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-	rc = pm8xxx_gpio_config(psensor_gpio.gpio, &psensor_gpio.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_PS_INT_N config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_PS_INT_N config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(psensor_gpio_LS_EN.gpio, &psensor_gpio_LS_EN.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_LS_EN config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_LS_EN config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(psensor_gpio_en.gpio, &psensor_gpio_en.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_PS_EN config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_PS_EN config ok\n", __func__);
-
-	/* Headset */
-	/*
-	rc = pm8xxx_gpio_config(charm_gpio_1.gpio, &charm_gpio_1.config);
-	if (rc) {
-		pr_info("[HS_BOARD] (%s) CHARM_SEL1 config failed\n", __func__);
-		return rc;
-	}
-
-	rc = pm8xxx_gpio_config(charm_gpio_2.gpio, &charm_gpio_2.config);
-	if (rc) {
-		pr_info("[HS_BOARD] (%s) CHARM_SEL2 config failed\n", __func__);
-		return rc;
-	}
-
-	rc = pm8xxx_gpio_config(psensor_gpio.gpio, &psensor_gpio.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_PS_INT_N config failed\n", __func__);
-		return rc;
-	} else
-		pr_info("%s [cm3628][PS]VIVOW_GPIO_PS_INT_N config ok\n", __func__);
-	*/
-	rc = pm8xxx_gpio_config(gpio15.gpio, &gpio15.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_FLASH_EN config failed\n", __func__);
-		return rc;
-	}
-
 	rc = pm8xxx_gpio_config(gpio18.gpio, &gpio18.config);
 	if (rc) {
-		pr_err("%s vivow_AUD_SPK_SD config failed\n", __func__);
+		pr_err("%s AUD_SPK_SD config failed\n", __func__);
 		return rc;
 	}
 
 	rc = pm8xxx_gpio_config(gpio19.gpio, &gpio19.config);
 	if (rc) {
-		pr_err("%s vivow_AUD_AMP_EN config failed\n", __func__);
+		pr_err("%s VIVOW_AUD_AMP_EN config failed\n", __func__);
 		return rc;
 	}
-/*
-	if (machine_is_msm8x55_svlte_surf() || machine_is_msm8x55_svlte_ffa() ||
-						machine_is_msm7x30_fluid())
-		hdmi_5V_en.gpio = PMIC_GPIO_HDMI_5V_EN_V2;
-	else
-		hdmi_5V_en.gpio = PMIC_GPIO_HDMI_5V_EN_V3;
 
-	hdmi_5V_en.gpio = PM8058_GPIO_PM_TO_SYS(hdmi_5V_en.gpio);
-
-	rc = pm8xxx_gpio_config(hdmi_5V_en.gpio, &hdmi_5V_en.config);
+	rc = pm8xxx_gpio_config(flashlight_gpio.gpio, &flashlight_gpio.config);
 	if (rc) {
-		pr_err("%s PMIC_GPIO_HDMI_5V_EN config failed\n", __func__);
+		pr_err("%s VIVOW_GPIO_FLASH_EN config failed\n", __func__);
 		return rc;
 	}
-*/
+
+	rc = pm8xxx_gpio_config(gpio22.gpio, &gpio22.config);
+	if (rc) {
+		pr_err("%s PMIC_GPIO_PS_INT_N config failed\n", __func__);
+		return rc;
+	}
+
 	rc = pm8xxx_gpio_config(gpio24.gpio, &gpio24.config);
 	if (rc) {
-		pr_err("%s PMIC_GPIO_VIVOW_GREEN_LED config failed\n", __func__);
+		pr_err("%s PMIC_GPIO_WLAN_EXT_POR config failed\n", __func__);
 		return rc;
 	}
 
 	rc = pm8xxx_gpio_config(gpio25.gpio, &gpio25.config);
 	if (rc) {
-		pr_err("%s PMIC_GPIO_VIVOW_GREEN_GREEN config failed\n", __func__);
+		pr_err("%s PMIC_GPIO_WLAN_EXT_POR config failed\n", __func__);
 		return rc;
 	}
-
-	for (i = 0; i < ARRAY_SIZE(tp_gpio_cfgs); ++i) {
-		rc = pm8xxx_gpio_config(tp_gpio_cfgs[i].gpio,
-					&tp_gpio_cfgs[i].config);
-		if (rc < 0) {
-			pr_err("[TP] pmic gpio cfg (%d) failed\n", i);
-			return rc;
-		}
-	}
-
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
-	if (machine_is_msm7x30_fluid())
-		sdcc_det.config.inv_int_pol = 1;
-
-	rc = pm8xxx_gpio_config(sdcc_det.gpio, &sdcc_det.config);
-	if (rc) {
-		pr_err("%s VIVOW_GPIO_SDMC_CD_N config failed\n", __func__);
-		return rc;
-	}
-#endif
 
 	keypad_gpio.gpio = VIVOW_VOL_UP;
 	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
@@ -791,38 +622,11 @@ static int pm8058_gpios_init(void)
 
 	rc = pm8xxx_gpio_config(compass_gpio.gpio, &compass_gpio.config);
 	if (rc) {
-		pr_err("%s VIVOW_GPIO_COMPASS_INT_N config failed\n", __func__);
+		pr_err("%s GPIO_COMPASS_INT_N config failed\n", __func__);
 		return rc;
-	} else
-		pr_info("%s [AKM8975] VIVOW_GPIO_COMPASS_INT_N config ok\n",
-				__func__);
-
-#if 0
-	if (machine_is_msm7x30_fluid()) {
-		/* Haptics gpio */
-		rc = pm8xxx_gpio_config(haptics_enable.gpio,
-						&haptics_enable.config);
-		if (rc) {
-			pr_err("%s: PMIC GPIO %d write failed\n", __func__,
-							haptics_enable.gpio);
-			return rc;
-		}
-		/* SCD4 gpio */
-		rc = pm8xxx_gpio_config(sdc4_en.gpio, &sdc4_en.config);
-		if (rc) {
-			pr_err("%s PMIC_GPIO_SDC4_EN_N config failed\n",
-								 __func__);
-			return rc;
-		}
-		rc = gpio_request(sdc4_en.gpio, "sdc4_en");
-		if (rc) {
-			pr_err("%s PMIC_GPIO_SDC4_EN_N gpio_request failed\n",
-				__func__);
-			return rc;
-		}
-		gpio_set_value_cansleep(sdc4_en.gpio, 0);
+	} else {
+		pr_info("%s [AKM8975] GPIO_COMPASS_INT_N config ok\n", __func__);
 	}
-#endif
 
 	return 0;
 }

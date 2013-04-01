@@ -3009,16 +3009,90 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	},
 };
 
+static struct resource qsd_spi_resources[] = {
+	{
+		.name   = "spi_irq_in",
+		.start	= INT_SPI_INPUT,
+		.end	= INT_SPI_INPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_out",
+		.start	= INT_SPI_OUTPUT,
+		.end	= INT_SPI_OUTPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_err",
+		.start	= INT_SPI_ERROR,
+		.end	= INT_SPI_ERROR,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_base",
+		.start	= 0xA8000000,
+		.end	= 0xA8000000 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name   = "spidm_channels",
+		.flags  = IORESOURCE_DMA,
+	},
+	{
+		.name   = "spidm_crci",
+		.flags  = IORESOURCE_DMA,
+	},
+};
+
+#define AMDH0_BASE_PHYS		0xAC200000
+#define ADMH0_GP_CTL		(ct_adm_base + 0x3D8)
+static int msm_qsd_spi_dma_config(void)
+{
+	void __iomem *ct_adm_base = 0;
+	u32 spi_mux = 0;
+	int ret = 0;
+
+	ct_adm_base = ioremap(AMDH0_BASE_PHYS, PAGE_SIZE);
+	if (!ct_adm_base) {
+		pr_err("%s: Could not remap %x\n", __func__, AMDH0_BASE_PHYS);
+		return -ENOMEM;
+	}
+
+	spi_mux = (ioread32(ADMH0_GP_CTL) & (0x3 << 12)) >> 12;
+
+	qsd_spi_resources[4].start  = DMOV_USB_CHAN;
+	qsd_spi_resources[4].end    = DMOV_TSIF_CHAN;
+
+	switch (spi_mux) {
+	case (1):
+		qsd_spi_resources[5].start  = DMOV_HSUART1_RX_CRCI;
+		qsd_spi_resources[5].end    = DMOV_HSUART1_TX_CRCI;
+		break;
+	case (2):
+		qsd_spi_resources[5].start  = DMOV_HSUART2_RX_CRCI;
+		qsd_spi_resources[5].end    = DMOV_HSUART2_TX_CRCI;
+		break;
+	case (3):
+		qsd_spi_resources[5].start  = DMOV_CE_OUT_CRCI;
+		qsd_spi_resources[5].end    = DMOV_CE_IN_CRCI;
+		break;
+	default:
+		ret = -ENOENT;
+	}
+
+	iounmap(ct_adm_base);
+
+	return ret;
+}
+
 #ifdef CONFIG_SPI_QSD
 static struct spi_board_info msm_spi_board_info[] __initdata = {
 	{
                 .modalias       = "spi_qsd",
                 .mode           = SPI_MODE_3,
-//              .irq            = MSM_GPIO_TO_INT(51),
                 .bus_num        = 0,
                 .chip_select    = 2,
                 .max_speed_hz   = 10000000,
-//              .platform_data  = &bma_pdata,
         },
 	{
 		.modalias	= "spi_aic3254",
@@ -3028,6 +3102,7 @@ static struct spi_board_info msm_spi_board_info[] __initdata = {
 		.max_speed_hz   = 9963243,
 	}
 };
+
 #endif
 
 static struct msm_gpio qsd_spi_gpio_config_data[] = {
@@ -3039,12 +3114,8 @@ static struct msm_gpio qsd_spi_gpio_config_data[] = {
 
 static int msm_qsd_spi_gpio_config(void)
 {
-#if 0
 	return msm_gpios_request_enable(qsd_spi_gpio_config_data,
 		ARRAY_SIZE(qsd_spi_gpio_config_data));
-#else
-	return 0;
-#endif
 }
 
 static void msm_qsd_spi_gpio_release(void)
@@ -3059,6 +3130,7 @@ static struct msm_spi_platform_data qsd_spi_pdata = {
 	.max_clock_speed = 26331429,
 	.gpio_config  = msm_qsd_spi_gpio_config,
 	.gpio_release = msm_qsd_spi_gpio_release,
+	.dma_config = msm_qsd_spi_dma_config,
 };
 
 static void __init msm_qsd_spi_init(void)
@@ -3070,7 +3142,6 @@ static uint32_t usb_ID_PIN_output_table[] = {
 	GPIO_CFG(VIVOW_GPIO_USB_ID_PIN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
-
 static uint32_t usb_ID_PIN_input_table[] = {
 	GPIO_CFG(VIVOW_GPIO_USB_ID_PIN, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 	GPIO_CFG(VIVOW_GPIO_USB_ID1_PIN, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
@@ -3079,17 +3150,15 @@ static uint32_t usb_ID_PIN_input_table[] = {
 void config_vivow_usb_id_gpios(bool output)
 {
 	if (output) {
-		gpio_tlmm_config(usb_ID_PIN_output_table[0], GPIO_CFG_ENABLE);
+		config_gpio_table(usb_ID_PIN_output_table, ARRAY_SIZE(usb_ID_PIN_output_table));
 		gpio_set_value(VIVOW_GPIO_USB_ID_PIN, 1);
-		printk(KERN_INFO "%s %d output high\n", __func__, VIVOW_GPIO_USB_ID_PIN);
+		printk(KERN_INFO "%s %d output high\n",  __func__, VIVOW_GPIO_USB_ID_PIN);
 	} else {
-		gpio_tlmm_config(usb_ID_PIN_input_table[0], GPIO_CFG_ENABLE);
-		gpio_tlmm_config(usb_ID_PIN_input_table[1], GPIO_CFG_ENABLE);
-		printk(KERN_INFO "%s %d input none pull\n", __func__, VIVOW_GPIO_USB_ID_PIN);
-		printk(KERN_INFO "%s %d input none pull\n", __func__, VIVOW_GPIO_USB_ID1_PIN);
+		config_gpio_table(usb_ID_PIN_input_table, ARRAY_SIZE(usb_ID_PIN_input_table));
+		printk(KERN_INFO "%s %d input none pull\n",  __func__, VIVOW_GPIO_USB_ID_PIN);
+		printk(KERN_INFO "%s %d input none pull\n",  __func__, VIVOW_GPIO_USB_ID1_PIN);
 	}
 }
-
 
 #define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
 int64_t vivow_get_usbid_adc(void)

@@ -80,6 +80,7 @@
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
+#include <mach/htc_headset_misc.h>
 #include <linux/cm3628.h>
 #include "devices.h"
 #include "timer.h"
@@ -3769,7 +3770,6 @@ static struct platform_device pm8058_leds = {
 };
 
 /* HTC_HEADSET_GPIO Driver */
-
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
 	.hpin_gpio		= VIVOW_GPIO_35MM_HEADSET_DET,
 	.key_enable_gpio	= 0,
@@ -3785,19 +3785,17 @@ static struct platform_device htc_headset_gpio = {
 };
 
 /* HTC_HEADSET_PMIC Driver */
-
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY |
-				  DRIVER_HS_PMIC_DYNAMIC_THRESHOLD,
+	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY,
 	.hpin_gpio		= 0,
 	.hpin_irq		= 0,
 	.key_gpio		= 0,
 	.key_irq		= 0,
 	.key_enable_gpio	= 0,
 	.adc_mic		= 0,
-	.adc_remote		= {0, 2342, 2343, 7463, 7464, 12592},
-	.hs_controller		= HS_PMIC_CONTROLLER_2,
-	.hs_switch		= HS_PMIC_SC_SWITCH_TYPE,
+	.adc_remote		= {0, 2502, 2892, 6144, 7230, 12592},
+	.hs_controller		= 0,
+	.hs_switch		= 0,
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -3808,7 +3806,7 @@ static struct platform_device htc_headset_pmic = {
 	},
 };
 
-
+/* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
 	&htc_headset_pmic,
 	&htc_headset_gpio,
@@ -3818,33 +3816,28 @@ static struct platform_device *headset_devices[] = {
 static struct headset_adc_config htc_headset_mgr_config[] = {
 	{
 		.type = HEADSET_MIC,
-		.adc_max = 55426,
-		.adc_min = 38237,
+		.adc_max = 57840,
+		.adc_min = 38252,
 	},
 	{
 		.type = HEADSET_BEATS,
-		.adc_max = 38236,
-		.adc_min = 30586,
+		.adc_max = 38251,
+		.adc_min = 30494,
 	},
 	{
 		.type = HEADSET_BEATS_SOLO,
-		.adc_max = 30585,
-		.adc_min = 20292,
-	},
-	{
-		.type = HEADSET_NO_MIC, /* HEADSET_INDICATOR */
-		.adc_max = 20291,
-		.adc_min = 7285,
+		.adc_max = 30493,
+		.adc_min = 12968,
 	},
 	{
 		.type = HEADSET_NO_MIC,
-		.adc_max = 7284,
+		.adc_max = 12967,
 		.adc_min = 0,
 	},
 };
 
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
-	.driver_flag		= DRIVER_HS_MGR_RPC_SERVER | DRIVER_HS_MGR_OLD_AJ,
+	.driver_flag		= DRIVER_HS_MGR_RPC_SERVER,
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
 	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),
@@ -3858,7 +3851,6 @@ static struct platform_device htc_headset_mgr = {
 		.platform_data	= &htc_headset_mgr_data,
 	},
 };
-
 
 static struct platform_device *devices[] __initdata = {
 	&ram_console_device,

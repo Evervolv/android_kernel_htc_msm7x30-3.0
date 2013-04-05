@@ -220,8 +220,9 @@ static int mddi_novtec_probe(struct platform_device *pdev)
 	struct msm_mddi_bridge_platform_data *bridge_data =
 		client_data->private_client_data;
 	struct panel_data *panel_data = &bridge_data->panel_conf;
-	struct panel_info *panel =
-		kzalloc(sizeof(struct panel_info), GFP_KERNEL);
+	struct panel_info *panel = devm_kzalloc(&pdev->dev,
+						sizeof(struct panel_info),
+						GFP_KERNEL);
 
 	if (!panel)
 		return -ENOMEM;
@@ -279,7 +280,6 @@ static int mddi_novtec_remove(struct platform_device *pdev)
 	struct panel_info *panel = platform_get_drvdata(pdev);
 
 	setup_vsync(panel, 0);
-	kfree(panel);
 	return 0;
 }
 

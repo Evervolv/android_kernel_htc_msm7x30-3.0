@@ -217,8 +217,9 @@ static int mddi_toshiba_probe(struct platform_device *pdev)
 	struct msm_mddi_client_data *client_data = pdev->dev.platform_data;
 	struct msm_mddi_bridge_platform_data *bridge_data =
 		client_data->private_client_data;
-	struct panel_info *panel =
-		kzalloc(sizeof(struct panel_info), GFP_KERNEL);
+	struct panel_info *panel = devm_kzalloc(&pdev->dev,
+						sizeof(struct panel_info),
+						GFP_KERNEL);
 	if (!panel)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, panel);
@@ -260,7 +261,6 @@ static int mddi_toshiba_remove(struct platform_device *pdev)
 	struct panel_info *panel = platform_get_drvdata(pdev);
 
 	setup_vsync(panel, 0);
-	kfree(panel);
 	return 0;
 }
 

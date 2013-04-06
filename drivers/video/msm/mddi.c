@@ -992,7 +992,7 @@ int mddi_reg_debugfs_init(struct mddi_info *mddi)
 	return 0;
 }
 
-static int mddi_probe(struct platform_device *pdev)
+static int __devinit mddi_probe(struct platform_device *pdev)
 {
 	struct msm_mddi_platform_data *pdata = pdev->dev.platform_data;
 	struct mddi_info *mddi = &mddi_info[pdev->id];

@@ -1,6 +1,6 @@
 #
 # Automatically generated make config: don't edit
-# Linux/arm 3.0.69 Kernel Configuration
+# Linux/arm 3.0.73 Kernel Configuration
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1392,6 +1392,8 @@ CONFIG_INPUT_CAPELLA_CM3602=y
 CONFIG_INPUT_DUMMY_KEYPAD=y
 # CONFIG_POWER_KEY_LED is not set
 # CONFIG_INPUT_OPTICALJOYSTICK is not set
+# CONFIG_OPTICALJOYSTICK_CRUCIAL_uP is not set
+# CONFIG_OPTICALJOYSTICK_CRUCIAL_SPI is not set
 
 #
 # Hardware I/O ports
@@ -2581,7 +2583,11 @@ CONFIG_NETWORK_FILESYSTEMS=y
 # CONFIG_NFS_FS is not set
 # CONFIG_NFSD is not set
 # CONFIG_CEPH_FS is not set
-# CONFIG_CIFS is not set
+CONFIG_CIFS=y
+# CONFIG_CIFS_STATS is not set
+# CONFIG_CIFS_WEAK_PW_HASH is not set
+# CONFIG_CIFS_XATTR is not set
+# CONFIG_CIFS_DEBUG2 is not set
 # CONFIG_NCP_FS is not set
 # CONFIG_CODA_FS is not set
 # CONFIG_AFS_FS is not set
@@ -2793,7 +2799,7 @@ CONFIG_CRYPTO_HMAC=y
 #
 CONFIG_CRYPTO_CRC32C=y
 # CONFIG_CRYPTO_GHASH is not set
-# CONFIG_CRYPTO_MD4 is not set
+CONFIG_CRYPTO_MD4=y
 CONFIG_CRYPTO_MD5=y
 # CONFIG_CRYPTO_MICHAEL_MIC is not set
 # CONFIG_CRYPTO_RMD128 is not set

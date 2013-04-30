@@ -139,8 +139,6 @@ struct pm8xxx_gpio_init_info {
 int __init glacier_init_panel(void);
 
 static unsigned int engineerid;
-extern unsigned long msm_fb_base;
-
 unsigned int glacier_get_engineerid(void)
 {
 	return engineerid;
@@ -2960,21 +2958,38 @@ static struct memtype_reserve msm7x30_reserve_table[] __initdata = {
 		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
 	[MEMTYPE_EBI1] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
+		.start	=	PMEM_KERNEL_EBI1_BASE,
+		.limit	=	PMEM_KERNEL_EBI1_SIZE,
+		.size	=	PMEM_KERNEL_EBI1_SIZE,
+		.flags	=	MEMTYPE_FLAGS_FIXED,
 	},
 };
 
+static void __init size_pmem_device(struct android_pmem_platform_data *pdata, unsigned long start, unsigned long size)
+{
+	pdata->start = start;
+	pdata->size = size;
+	if (pdata->start)
+		pr_info("%s: pmem %s requests %lu bytes at 0x%p (0x%lx physical).\r\n",
+			__func__, pdata->name, size, __va(start), start);
+	else
+		pr_info("%s: pmem %s requests %lu bytes dynamically.\r\n",
+			__func__, pdata->name, size);
+}
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
-	android_pmem_adsp_pdata.size = pmem_adsp_size;
-	android_pmem_pdata.size = pmem_sf_size;
+	size_pmem_device(&android_pmem_adsp_pdata, MSM_PMEM_ADSP_BASE, pmem_adsp_size);
+	size_pmem_device(&android_pmem_pdata, MSM_PMEM_SF_BASE, pmem_sf_size);
 #endif
 }
 
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
-	msm7x30_reserve_table[p->memory_type].size += p->size;
+	if (p->start == 0) {
+		pr_info("%s: reserve %lu bytes from memory %d for %s.\r\n", __func__, p->size, p->memory_type, p->name);
+		msm7x30_reserve_table[p->memory_type].size += p->size;
+	}
 }
 
 static void __init reserve_pmem_memory(void)
@@ -2982,7 +2997,6 @@ static void __init reserve_pmem_memory(void)
 #ifdef CONFIG_ANDROID_PMEM
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-	msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
 #endif
 }
 
@@ -2995,7 +3009,7 @@ static void __init msm7x30_calculate_reserve_sizes(void)
 static int msm7x30_paddr_to_memtype(unsigned int paddr)
 {
 	if (paddr < 0x40000000)
-		return MEMTYPE_EBI1;
+		return MEMTYPE_EBI0;
 	if (paddr >= 0x40000000 && paddr < 0x80000000)
 		return MEMTYPE_EBI1;
 	return MEMTYPE_NONE;
@@ -3015,16 +3029,13 @@ static void __init glacier_reserve(void)
 
 static void __init glacier_allocate_memory_regions(void)
 {
-	void *addr;
 	unsigned long size;
 
-	size = fb_size ? : MSM_FB_SIZE;
-	addr = alloc_bootmem_align(size, 0x1000);
-	msm_fb_resources[0].start = __pa(addr);
-	msm_fb_base = msm_fb_resources[0].start;
+	size = MSM_FB_SIZE;
+	msm_fb_resources[0].start = MSM_FB_BASE;
 	msm_fb_resources[0].end = msm_fb_resources[0].start + size - 1;
-	printk("allocating %lu bytes at %p (%lx physical) for fb\n",
-			size, addr, __pa(addr));
+	pr_info("allocating %lu bytes at 0x%p (0x%lx physical) for fb\n",
+		size, __va(MSM_FB_BASE), (unsigned long) MSM_FB_BASE);
 }
 
 static void __init glacier_map_io(void)

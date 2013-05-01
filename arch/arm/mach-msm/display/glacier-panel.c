@@ -81,11 +81,8 @@ enum {
 
 enum led_brightness brightness_value = DEFAULT_BRIGHTNESS;
 
-extern unsigned long msm_fb_base;
-
 /* use one flag to have better backlight on/off performance */
 static int glacier_set_dim = 1;
-
 
 static int glacier_shrink_pwm(int brightness, int user_def,
 		int user_min, int user_max, int panel_def,
@@ -119,14 +116,14 @@ static void glacier_set_brightness(struct led_classdev *led_cdev,
 	if (test_bit(GATE_ON, &cabc.status) == 0)
 		return;
 
-	if(panel_type == PANEL_SHARP)
-		shrink_br = glacier_shrink_pwm(val, PWM_USER_DEF,
-				PWM_USER_MIN, PWM_USER_MAX, PWM_SHARP_DEF,
-				PWM_SHARP_MIN, PWM_SHARP_MAX);
-	else
+	if(panel_type == PANEL_SONY)
 		shrink_br = glacier_shrink_pwm(val, PWM_USER_DEF,
 				PWM_USER_MIN, PWM_USER_MAX, PWM_SONY_DEF,
 				PWM_SONY_MIN, PWM_SONY_MAX);
+	else
+		shrink_br = glacier_shrink_pwm(val, PWM_USER_DEF,
+				PWM_USER_MIN, PWM_USER_MAX, PWM_SHARP_DEF,
+				PWM_SHARP_MIN, PWM_SHARP_MAX);
 
 	if (!client) {
 		pr_info("null mddi client");
@@ -210,6 +207,8 @@ err_register_lcd_bl:
 
 static struct resource resources_msm_fb[] = {
 	{
+		.start = MSM_FB_BASE,
+		.end = MSM_FB_BASE + MSM_FB_SIZE - 1,
 		.flags = IORESOURCE_MEM,
 	},
 };
@@ -225,6 +224,7 @@ static struct nov_regs sharp_init_seq[] = {
 	{0x1100, 0x00},
 	{REG_WAIT, 120},
 	{0x3500, 0x00},
+	{0x3600, 0xC0},
 	{0x5100, 0x00},
 	{0x89C3, 0x0080},
 	{0x92C2, 0x0008},
@@ -399,8 +399,8 @@ static struct nov_regs sharp_init_seq[] = {
 static struct nov_regs sony_init_seq[] = {
 	{0x1100, 0x00},
 	{REG_WAIT, 120},
-	{0x3600, 0xD0},
 	{0x3500, 0x0000},
+	{0x3600, 0xD0},
 	{0x5100, 0x00},
 	{0x2480, 0x0069},
 	{0x2580, 0x006C},
@@ -581,15 +581,10 @@ glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 {
 	B(KERN_DEBUG "%s +\n", __func__);
 	client_data->auto_hibernate(client_data, 0);
+
 	/* HTC, Add 50 ms delay for stability of driver IC at high temperature */
 	hr_msleep(50);
-	/* disable driver ic flip since sharp used mdp flip */
-	if (panel_type == PANEL_SHARP) {
-		client_data->remote_write(client_data, 0x00, 0x3600);
-		client_data->remote_write(client_data, 0x24, 0x5300);
-	} else {
-		client_data->remote_write(client_data, 0x24, 0x5300);
-	}
+	client_data->remote_write(client_data, 0x24, 0x5300);
 	glacier_backlight_switch(LED_FULL);
 	client_data->auto_hibernate(client_data, 1);
 	return 0;
@@ -701,9 +696,9 @@ static struct platform_driver glacier_backlight_driver = {
 
 static struct msm_mdp_platform_data mdp_pdata_sharp = {
 #ifdef CONFIG_OVERLAY_FORCE_UPDATE
-	.overrides = MSM_MDP_PANEL_ROT_180 | MSM_MDP_FORCE_UPDATE,
+	.overrides = MSM_MDP4_MDDI_DMA_SWITCH | MSM_MDP_FORCE_UPDATE,
 #else
-	.overrides = MSM_MDP_PANEL_ROT_180,
+	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
 #endif
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
@@ -754,9 +749,6 @@ int __init glacier_init_panel(void)
 			__func__, PTR_ERR(V_LCMIO_2V8));
 		return -1;
 	}
-
-	resources_msm_fb[0].start = msm_fb_base;
-	resources_msm_fb[0].end = msm_fb_base + MSM_FB_SIZE - 1;
 
 	if (panel_type == PANEL_SHARP)
 		msm_device_mdp.dev.platform_data = &mdp_pdata_sharp;

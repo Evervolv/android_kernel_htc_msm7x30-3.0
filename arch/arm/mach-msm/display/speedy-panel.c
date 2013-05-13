@@ -541,6 +541,13 @@ static struct msm_mdp_platform_data mdp_pdata = {
 #else
 	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
 #endif
+#ifdef CONFIG_MDP4_HW_VSYNC
+       .xres = 480,
+       .yres = 800,
+       .back_porch = 4,
+       .front_porch = 2,
+       .pulse_width = 4,
+#endif
 };
 
 int __init speedy_init_panel(unsigned int sys_rev)

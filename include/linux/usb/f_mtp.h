@@ -39,7 +39,6 @@ struct mtp_data_header {
 #define MTP_INTERFACE_MODE_MTP  0
 #define MTP_INTERFACE_MODE_PTP  1
 
-
 struct mtp_file_range {
 	/* file descriptor for file to transfer */
 	int			fd;

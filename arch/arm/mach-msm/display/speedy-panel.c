@@ -211,6 +211,8 @@ struct nov_regs {
 static struct nov_regs sharp_init_seq[] = {
 	{0x1100, 0x00},
 	{REG_WAIT, 120},
+	{0x3500, 0x00},
+	{0x5100, 0x00},
 	{0x17C0, 0x0F},
 	{0x53C0, 0x00},
 	{0x54C0, 0x50},
@@ -380,10 +382,8 @@ static struct nov_regs sharp_init_seq[] = {
 	{0xEE80, 0x80},
 	{0xF380, 0xCC},
 	{0x2900, 0x00},
-	{0x3500, 0x00},
 	{0x4400, 0x02},
 	{0x4401, 0x58},
-	{0x22C0, 0x0A},
 };
 
 static int
@@ -446,6 +446,7 @@ speedy_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 	client_data->auto_hibernate(client_data, 0);
 	hr_msleep(50);
 	client_data->remote_write(client_data, 0x24, 0x5300);
+	client_data->remote_write(client_data, 0x0A, 0x22C0);
 	speedy_backlight_switch(LED_FULL);
 	client_data->auto_hibernate(client_data, 1);
 	return 0;

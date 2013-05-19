@@ -33,7 +33,7 @@
 #include <linux/wakelock.h>
 #include <linux/slab.h>
 #include <mach/qdsp5v2/audio_acdb_def.h>
-#include <linux/spi/spi_aic3254.h>
+#include <linux/spi_aic3254.h>
 #include <mach/qdsp5v2/marimba_profile.h>
 #include <asm/mach-types.h>
 #include <mach/debug_mm.h>

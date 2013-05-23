@@ -93,7 +93,7 @@
 #include "spm.h"
 #include "acpuclock.h"
 #include <mach/dal_axi.h>
-#include <mach/tpa2051d3.h>
+#include <linux/tpa2051d3.h>
 #include <mach/msm_serial_hs.h>
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 #include <mach/bcm_bt_lpm.h>

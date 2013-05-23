@@ -23,7 +23,7 @@
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
 #include <linux/wakelock.h>
-#include <mach/msm_audio_mvs.h>
+#include <linux/msm_audio_mvs.h>
 #include <linux/slab.h>
 #include <mach/msm_rpcrouter.h>
 

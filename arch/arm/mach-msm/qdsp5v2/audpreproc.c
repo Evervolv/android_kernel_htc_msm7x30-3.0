@@ -349,6 +349,11 @@ int audpreproc_aenc_alloc(unsigned enc_type, const char **module_name,
 		}
 	}
 
+#ifdef CONFIG_MSM7KV2_AUDIO_WORKAROUND
+	/* hack for audio record */
+	lidx = 1;
+#endif
+
 	if (lidx < msm_enc_database.num_enc) {
 		audpreproc->enc_inuse |= (1 << lidx);
 		*module_name =

@@ -466,6 +466,13 @@ config MACH_GLACIER
        help
          Support for the Qualcomm Glacier board.
 
+config MACH_SPEEDY
+       depends on ARCH_MSM7X30
+       default n
+       bool "Speedy"
+       help
+         Support for the Qualcomm Speedy board.
+
 config MACH_SPADE
        depends on ARCH_MSM7X30
        default n
@@ -1658,6 +1665,14 @@ config MSM7KV2_AUDIO
 	help
 	  Enables QDSP5V2-based audio drivers for audio playbacks and
 	  voice call.
+
+config MSM7KV2_AUDIO_WORKAROUND
+	bool "MSM7K v2 audio workaround"
+	depends on MSM7KV2_AUDIO
+	default n
+	help
+	  Enables QDSP5V2-based audio workaround for devices that have
+	  issues with voice processing.
 
 config MSM_ADSP_REPORT_EVENTS
 	bool "Report modem events from the DSP"

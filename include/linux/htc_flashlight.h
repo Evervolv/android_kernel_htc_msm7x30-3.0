@@ -118,5 +118,7 @@ struct TPS61310_flashlight_platform_data {
 int tps61310_flashlight_control(int mode);
 #endif
 
+int adp1650_flashlight_control(int mode);
+
 #undef __HTC_FLASHLIGHT_H
 #endif

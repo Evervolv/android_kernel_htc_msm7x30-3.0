@@ -17,7 +17,7 @@
 #include <linux/mfd/pmic8058.h>
 #include <linux/mfd/marimba.h>
 #include <linux/delay.h>
-#include <mach/tpa2051d3.h>
+#include <linux/tpa2051d3.h>
 #include <mach/gpio.h>
 #include <mach/pmic.h>
 #include <mach/dal.h>
@@ -28,7 +28,7 @@
 #include <mach/htc_acoustic_7x30.h>
 #include <mach/htc_acdb_7x30.h>
 #include <mach/board_htc.h>
-#include <linux/spi/spi_aic3254.h>
+#include <linux/spi_aic3254.h>
 
 #include "board-vivow.h"
 

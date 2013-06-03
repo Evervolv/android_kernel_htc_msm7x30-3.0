@@ -467,6 +467,15 @@ obj-$(CONFIG_MACH_GLACIER) += board-glacier-keypad.o board-glacier-audio.o
 obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o
 obj-$(CONFIG_MACH_GLACIER) += display/glacier-panel.o
 obj-$(CONFIG_MACH_GLACIER) += htc_bdaddress.o
+obj-$(CONFIG_MACH_SPEEDY) += board-speedy.o board-speedy-microp.o 
+obj-$(CONFIG_MACH_SPEEDY) += board-speedy-keypad.o board-speedy-audio.o
+ifeq ($(CONFIG_WIMAX),y)
+obj-$(CONFIG_MACH_SPEEDY) += board-speedy-mmc.o board-speedy-wifi.o board-common-wimax.o
+else
+obj-$(CONFIG_MACH_SPEEDY) += board-speedy-mmc.o board-speedy-wifi.o
+endif
+obj-$(CONFIG_MACH_SPEEDY) += display/speedy-panel.o
+obj-$(CONFIG_MACH_SPEEDY) += htc_bdaddress.o board-speedy-rfkill.o
 # Those panels need SPI_DISPLAY
 ifeq ($(CONFIG_SPI_DISPLAY),y)
 	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
@@ -520,10 +529,10 @@ obj-$(CONFIG_MACH_KINGDOM) += board-kingdom-mmc.o board-kingdom-wifi.o board-com
 else
 obj-$(CONFIG_MACH_KINGDOM) += board-kingdom-mmc.o board-kingdom-wifi.o
 endif
+obj-$(CONFIG_MACH_KINGDOM) += htc_bdaddress.o board-kingdom-rfkill.o
+
 
 obj-$(CONFIG_ARCH_MSM_FLASHLIGHT) += msm_flashlight.o
-
-obj-$(CONFIG_MACH_KINGDOM) += htc_bdaddress.o board-kingdom-rfkill.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 

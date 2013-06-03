@@ -76,6 +76,7 @@
 #include <linux/platform_data/qcom_crypto_device.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
+#include <mach/htc_headset_microp.h>
 #include <mach/htc_headset_pmic.h>
 
 #ifdef CONFIG_USB_G_ANDROID
@@ -356,15 +357,28 @@ static struct platform_device htc_headset_gpio = {
 	},
 };
 
+/* HTC_HEADSET_MICROP Driver */
+static struct htc_headset_microp_platform_data htc_headset_microp_data = {
+	.remote_int		= 1 << 13,
+	.remote_irq		= MSM_uP_TO_INT(13),
+	.remote_enable_pin	= 1 << 4,
+	.adc_channel		= 0x01,
+	.adc_remote		= {0, 33, 38, 82, 95, 167},
+};
+
+static struct platform_device htc_headset_microp = {
+	.name	= "HTC_HEADSET_MICROP",
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &htc_headset_microp_data,
+	},
+};
+
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.driver_flag		= DRIVER_HS_PMIC_RPC_KEY |
-				  DRIVER_HS_PMIC_DYNAMIC_THRESHOLD,
-	.hpin_gpio		= 0,
-	.adc_mic		= 14894,
-	.adc_remote		= {0, 2342, 2343, 7463, 7464, 12592},
-	.hs_controller		= HS_PMIC_CONTROLLER_2,
-	.hs_switch		= HS_PMIC_SC_SWITCH_TYPE,
+	.hpin_gpio	= 0,
+	.hpin_irq	= MSM_GPIO_TO_INT(
+			  PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -377,53 +391,41 @@ static struct platform_device htc_headset_pmic = {
 
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
-	&htc_headset_pmic,
 	&htc_headset_gpio,
+	&htc_headset_microp,
+	&htc_headset_pmic,
 	/* Please put the headset detection driver on the last */
 };
 
 static struct headset_adc_config htc_headset_mgr_config[] = {
 	{
 		.type = HEADSET_MIC,
-		.adc_max = 55426,
-		.adc_min = 38237,
+		.adc_max = 54808,
+		.adc_min = 44587,
 	},
 	{
-		.type = HEADSET_BEATS,
-		.adc_max = 38236,
-		.adc_min = 30586,
+		.type = HEADSET_METRICO, /* HEADSET_BEATS */
+		.adc_max = 44586,
+		.adc_min = 15951,
 	},
 	{
-		.type = HEADSET_BEATS_SOLO,
-		.adc_max = 30585,
-		.adc_min = 20292,
-	},
-	{
-		.type = HEADSET_NO_MIC, /* HEADSET_INDICATOR */
-		.adc_max = 20291,
-		.adc_min = 7285,
+		.type = HEADSET_NO_MIC, /* HEADSET_MIC */
+		.adc_max = 15950,
+		.adc_min = 1331,
 	},
 	{
 		.type = HEADSET_NO_MIC,
-		.adc_max = 7284,
+		.adc_max = 1330,
 		.adc_min = 0,
 	},
 };
 
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
-	.driver_flag		= DRIVER_HS_MGR_RPC_SERVER | DRIVER_HS_MGR_OLD_AJ,
+	.driver_flag		= 0,
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
 	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),
 	.headset_config		= htc_headset_mgr_config,
-};
-
-static struct platform_device htc_headset_mgr = {
-	.name	= "HTC_HEADSET_MGR",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &htc_headset_mgr_data,
-	},
 };
 
 static struct microp_function_config microp_functions[] = {
@@ -499,6 +501,13 @@ static struct platform_device microp_devices[] = {
 		.name = BMA150_G_SENSOR_NAME,
 		.dev = {
 			.platform_data = &microp_g_sensor_pdata,
+		},
+	},
+	{
+		.name	= "HTC_HEADSET_MGR",
+		.id	= -1,
+		.dev	= {
+			.platform_data	= &htc_headset_mgr_data,
 		},
 	},
 };
@@ -1360,7 +1369,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.functions = usb_functions_all,
 	.fserial_init_string = "tty:modem,tty:autobot,tty:serial,tty:autobot",
 	.nluns = 1,
-	.usb_id_pin_gpio = GLACIER_GPIO_USB_ID1_PIN,
+	.usb_id_pin_gpio = GLACIER_GPIO_USB_ID_PIN,
 };
 
 static struct platform_device android_usb_device = {
@@ -2122,38 +2131,30 @@ static struct platform_device ram_console_device = {
 };
 
 static uint32_t usb_ID_PIN_input_table[] = {
-	GPIO_CFG(GLACIER_GPIO_USB_ID1_PIN, 0, GPIO_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+	GPIO_CFG(GLACIER_GPIO_USB_ID_PIN, 0, GPIO_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
 static uint32_t usb_ID_PIN_output_table[] = {
-	GPIO_CFG(GLACIER_GPIO_USB_ID1_PIN, 0, GPIO_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+	GPIO_CFG(GLACIER_GPIO_USB_ID_PIN, 0, GPIO_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
 void config_glacier_usb_id_gpios(bool output)
 {
 	if (output) {
 		config_gpio_table(usb_ID_PIN_output_table, ARRAY_SIZE(usb_ID_PIN_output_table));
-		gpio_set_value(GLACIER_GPIO_USB_ID1_PIN, 1);
-		printk(KERN_INFO "%s %d output high\n",  __func__, GLACIER_GPIO_USB_ID1_PIN);
+		gpio_set_value(GLACIER_GPIO_USB_ID_PIN, 1);
+		printk(KERN_INFO "%s %d output high\n",  __func__, GLACIER_GPIO_USB_ID_PIN);
 	} else {
 		config_gpio_table(usb_ID_PIN_input_table, ARRAY_SIZE(usb_ID_PIN_input_table));
-		printk(KERN_INFO "%s %d input none pull\n",  __func__, GLACIER_GPIO_USB_ID1_PIN);
+		printk(KERN_INFO "%s %d input none pull\n",  __func__, GLACIER_GPIO_USB_ID_PIN);
 	}
-}
-#define PM8058ADC_16BIT(adc) ((adc * 2200) / 65535) /* vref=2.2v, 16-bits resolution */
-int64_t glacier_get_usbid_adc(void)
-{
-	uint32_t adc_value = 0xffffffff;
-	htc_get_usb_accessory_adc_level(&adc_value);
-	adc_value = PM8058ADC_16BIT(adc_value);
-	return adc_value;
 }
 
 static struct cable_detect_platform_data cable_detect_pdata = {
-	.detect_type 		= CABLE_TYPE_PMIC_ADC,
-	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID1_PIN,
+	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID_PIN,
 	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
-	.get_adc_cb		= glacier_get_usbid_adc,
+	.dock_detect		= 1,
+	.dock_pin_gpio		= GLACIER_GPIO_DOCK_PIN,
 };
 
 static struct platform_device cable_detect_device = {
@@ -2782,7 +2783,6 @@ static struct platform_device *devices[] __initdata = {
         &glacier_flashlight_device,
 #endif
 	&cable_detect_device,
-	&htc_headset_mgr
 };
 
 static void __init glacier_init(void)

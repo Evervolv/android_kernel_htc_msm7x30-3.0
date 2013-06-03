@@ -9,10 +9,6 @@
 #define AKM8975_I2C_NAME "akm8975"
 
 /* Compass device dependent definition */
-
-/*! \name AK8975 register address
-\anchor AK8975_REG
-Defines a register address of the AK8975.*/
 #define AK8975_REG_WIA		0x00
 #define AK8975_REG_INFO		0x01
 #define AK8975_REG_ST1		0x02
@@ -29,7 +25,6 @@ Defines a register address of the AK8975.*/
 #define AK8975_REG_TS1		0x0D
 #define AK8975_REG_TS2		0x0E
 #define AK8975_REG_I2CDIS	0x0F
-
 
 /*! \name AK8975 fuse-rom address
 \anchor AK8975_FUSE

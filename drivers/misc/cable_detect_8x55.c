@@ -38,6 +38,7 @@
 #include "../video/msm_8x60/sii9234/TPI.h"
 #endif
 
+extern int msm_otg_get_vbus_state(void);
 
 /*#define MHL_INTERNAL_POWER 1*/
 static int vbus;
@@ -46,11 +47,20 @@ static struct switch_dev dock_switch = {
 	.name = "dock",
 };
 
+static struct switch_dev usb_vbus_switch = {
+	.name = "usb_vbus",
+};
+static char *vbus_high_event[3] = {"SWITCH_NAME=usb_vbus",
+				"SWITCH_STATE=high", 0};
+static char *vbus_low_event[3] = {"SWITCH_NAME=usb_vbus",
+				"SWITCH_STATE=low", 0};
+
 struct cable_detect_info {
 	spinlock_t lock;
 
 	int vbus_mpp_gpio;
 	int vbus_mpp_irq;
+	int vbus_uevent;
 	enum usb_connect_type connect_type;
 	/*for accessory*/
 	int usb_id_pin_gpio;
@@ -88,6 +98,7 @@ struct cable_detect_info {
 	struct delayed_work dock_work_isr;
 	struct delayed_work dock_work;
 #endif
+	int carkit_only;
 } the_cable_info;
 
 
@@ -304,6 +315,45 @@ static int cable_detect_get_type(struct cable_detect_info *pInfo)
 
 }
 
+/* detect accessory by USB PHY id pin*/
+extern int htc_get_accessory_state(void);
+static int phy_id_detect(struct cable_detect_info *pInfo)
+{
+	int type,value,n;
+
+	msleep(100);
+
+	value = gpio_get_value(pInfo->usb_id_pin_gpio);
+	CABLE_INFO("%s: usb ID pin = %d\n", __func__, value);
+
+	if (value == 0) {
+		if (pInfo->carkit_only) {
+			CABLE_INFO("carkit only = 1\n");
+			type = DOCK_STATE_CAR;
+		} else {
+			if (pInfo->config_usb_id_gpios)
+				pInfo->config_usb_id_gpios(1);
+
+			n = htc_get_accessory_state();
+
+			if (n == 1)
+				type = DOCK_STATE_CAR;
+			else if (n == 0)
+				type = DOCK_STATE_DESK;
+			else
+				type = DOCK_STATE_UNDOCKED;
+
+			if (pInfo->config_usb_id_gpios)
+				pInfo->config_usb_id_gpios(0);
+			msleep(15);
+		}
+	} else
+		type = DOCK_STATE_UNDOCKED;
+
+	CABLE_INFO("%s: type = %d\n", __func__, type);
+	return type;
+}
+
 static void cable_detect_handler(struct work_struct *w)
 {
 	struct cable_detect_info *pInfo = container_of(
@@ -324,6 +374,8 @@ static void cable_detect_handler(struct work_struct *w)
 				&pInfo->cable_detect_work, ADC_DELAY);
 			return;
 		}
+	} else if (pInfo->detect_type == CABLE_TYPE_ID_PIN) {
+		accessory_type = phy_id_detect(pInfo);
 	} else
 		accessory_type = DOCK_STATE_UNDOCKED;
 
@@ -360,8 +412,6 @@ static void cable_detect_handler(struct work_struct *w)
 		CABLE_INFO("MHL inserted\n");
 		switch_set_state(&dock_switch, DOCK_STATE_MHL);
 		pInfo->accessory_type = DOCK_STATE_MHL;
-                if (pInfo->usb_mhl_switch)
-                  pInfo->usb_mhl_switch(1);
 #ifdef MHL_INTERNAL_POWER
 		if (!pInfo->mhl_internal_3v3 && !vbus)
 			send_cable_connect_notify(CONNECT_TYPE_INTERNAL);
@@ -407,8 +457,6 @@ static void cable_detect_handler(struct work_struct *w)
 #ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
 		case DOCK_STATE_MHL:
 			CABLE_INFO("MHL removed\n");
-                        if (pInfo->usb_mhl_switch)
-                          pInfo->usb_mhl_switch(0);
 			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
 			break;
 #endif
@@ -746,11 +794,9 @@ static void dock_detect_init(struct cable_detect_info *pInfo)
 static ssize_t vbus_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct cable_detect_info *pInfo = &the_cable_info;
-	int level, vbus_in;
+	int vbus_in;
 
-	level = gpio_get_value(pInfo->vbus_mpp_gpio);
-	vbus_in = (level) ? 0:1;
+	vbus_in = (msm_otg_get_vbus_state()) ? 1:0;
 	CABLE_INFO("%s: vbus state = %d\n", __func__, vbus_in);
 	return sprintf(buf, "%d\n", vbus_in);
 }
@@ -830,6 +876,7 @@ static int cable_detect_probe(struct platform_device *pdev)
 		pInfo->mhl_internal_3v3 = pdata->mhl_internal_3v3;
 
 		pInfo->vbus_mpp_irq = pdata->vbus_mpp_irq;
+		pInfo->vbus_uevent = pdata->vbus_uevent;
 #ifdef CONFIG_CABLE_DETECT_ACCESSORY
 		pInfo->detect_type = pdata->detect_type;
 		pInfo->usb_id_pin_gpio = pdata->usb_id_pin_gpio;
@@ -840,6 +887,7 @@ static int cable_detect_probe(struct platform_device *pdev)
 		pInfo->mhl_version_ctrl_flag = pdata->mhl_version_ctrl_flag;
 		pInfo->mhl_1v2_power = pdata->mhl_1v2_power;
 		pInfo->get_adc_cb = pdata->get_adc_cb;
+		pInfo->carkit_only = pdata->carkit_only;
 
 		if (pInfo->config_usb_id_gpios)
 			pInfo->config_usb_id_gpios(0);
@@ -907,6 +955,12 @@ static int cable_detect_probe(struct platform_device *pdev)
 	ret = device_create_file(dock_switch.dev, &dev_attr_dmb_wakeup);
 	if (ret != 0)
 		CABLE_ERR("dev_attr_dmb_wakeup failed\n");
+
+	if (pdata->vbus_uevent) {
+		if (switch_dev_register(&usb_vbus_switch) < 0) {
+			CABLE_ERR("failed to register usb_vbus\n");
+		}
+	}
 
 	CABLE_INFO("8x25 USB_ID ADC = %lld\n", cable_detect_get_adc());
 
@@ -999,6 +1053,16 @@ static void usb_status_notifier_func(int cable_type)
 #endif
 	pInfo->connect_type = cable_type;
 	send_cable_connect_notify(cable_type);
+
+	if (pInfo->vbus_uevent) {
+		if (cable_type == CONNECT_TYPE_USB) {
+			CABLE_INFO("%s sending vbus high event\n", __func__);
+			kobject_uevent_env(&usb_vbus_switch.dev->kobj, KOBJ_CHANGE, vbus_high_event);
+		} else if (cable_type == CONNECT_TYPE_NONE) {
+			CABLE_INFO("%s sending vbus low event\n", __func__);
+			kobject_uevent_env(&usb_vbus_switch.dev->kobj, KOBJ_CHANGE, vbus_low_event);
+		}
+	}
 #endif
 }
 

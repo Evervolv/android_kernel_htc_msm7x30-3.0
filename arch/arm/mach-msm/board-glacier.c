@@ -36,6 +36,7 @@
 #include <linux/a1026.h>
 #include <linux/power_supply.h>
 #include <linux/leds-pm8058.h>
+#include <linux/msm_adc.h>
 #include <linux/dma-mapping.h>
 #include <linux/proc_fs.h>
 #include <linux/htc_flashlight.h>
@@ -106,8 +107,6 @@
 #include "smd_private.h"
 #include "board-glacier.h"
 #include "board-msm7x30-regulator.h"
-
-int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 
 #define GPIO_2MA	0
 #define GPIO_4MA	1
@@ -1682,18 +1681,22 @@ static struct platform_device htc_battery_pdev = {
 	},
 };
 
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-static int __init check_dq_setup(char *str)
-{
-	if (!strcmp(str, "PASS"))
-		tps65200_data.dq_result = 1;
-	else
-		tps65200_data.dq_result = 0;
+static char *msm_adc_device_names[] = {
+	"XO_ADC",
+};
 
-	return 1;
-}
-__setup("androidboot.dq=", check_dq_setup);
-#endif
+static struct msm_adc_platform_data msm_adc_pdata = {
+	.dev_names = msm_adc_device_names,
+	.num_adc = ARRAY_SIZE(msm_adc_device_names),
+};
+
+static struct platform_device msm_adc_device = {
+	.name   = "msm_adc",
+	.id = -1,
+	.dev = {
+		.platform_data = &msm_adc_pdata,
+	},
+};
 
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
@@ -2151,6 +2154,7 @@ void config_glacier_usb_id_gpios(bool output)
 }
 
 static struct cable_detect_platform_data cable_detect_pdata = {
+	.detect_type 		= CABLE_TYPE_ID_PIN,
 	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID_PIN,
 	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
 	.dock_detect		= 1,
@@ -2771,6 +2775,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_camera_sensor_mt9v113,
 #endif
         &htc_battery_pdev,
+	&msm_adc_device,
         &msm_ebi0_thermal,
         &msm_ebi1_thermal,
 #ifdef CONFIG_SERIAL_MSM_HS

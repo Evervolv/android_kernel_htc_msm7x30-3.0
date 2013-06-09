@@ -57,6 +57,7 @@ enum {
 };
 
 static DEFINE_MUTEX(notify_sem);
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 static DEFINE_MUTEX(smwork_sem);
 static void msm_otg_start_peripheral(struct otg_transceiver *otg, int on);
 static int carkit_phy_reset(struct otg_transceiver *otg);
@@ -95,6 +96,7 @@ int htc_get_accessory_state(void)
 	pm_runtime_put_sync_suspend(motg->otg.dev);
 	return ret;
 }
+#endif
 
 static void send_usb_connect_notify(struct work_struct *w)
 {

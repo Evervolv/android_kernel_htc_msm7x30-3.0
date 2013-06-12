@@ -59,6 +59,7 @@ enum {
 static DEFINE_MUTEX(notify_sem);
 static DEFINE_MUTEX(smwork_sem);
 static void msm_otg_start_peripheral(struct otg_transceiver *otg, int on);
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 static int carkit_phy_reset(struct otg_transceiver *otg);
 
 int htc_get_accessory_state(void)
@@ -95,6 +96,7 @@ int htc_get_accessory_state(void)
 	pm_runtime_put_sync_suspend(motg->otg.dev);
 	return ret;
 }
+#endif
 
 static void send_usb_connect_notify(struct work_struct *w)
 {
@@ -790,6 +792,7 @@ static int msm_otg_link_reset(struct msm_otg *motg)
 	return 0;
 }
 
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 static int carkit_phy_reset(struct otg_transceiver *otg)
 {
 	struct msm_otg *motg = container_of(otg, struct msm_otg, otg);
@@ -838,6 +841,7 @@ static int carkit_phy_reset(struct otg_transceiver *otg)
 	}
 	return 0;
 }
+#endif
 
 static int msm_otg_reset(struct otg_transceiver *otg)
 {

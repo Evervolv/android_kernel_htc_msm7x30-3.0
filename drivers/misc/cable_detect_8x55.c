@@ -315,6 +315,7 @@ static int cable_detect_get_type(struct cable_detect_info *pInfo)
 
 }
 
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 /* detect accessory by USB PHY id pin*/
 extern int htc_get_accessory_state(void);
 static int phy_id_detect(struct cable_detect_info *pInfo)
@@ -353,6 +354,7 @@ static int phy_id_detect(struct cable_detect_info *pInfo)
 	CABLE_INFO("%s: type = %d\n", __func__, type);
 	return type;
 }
+#endif
 
 static void cable_detect_handler(struct work_struct *w)
 {
@@ -374,8 +376,10 @@ static void cable_detect_handler(struct work_struct *w)
 				&pInfo->cable_detect_work, ADC_DELAY);
 			return;
 		}
+#ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 	} else if (pInfo->detect_type == CABLE_TYPE_ID_PIN) {
 		accessory_type = phy_id_detect(pInfo);
+#endif
 	} else
 		accessory_type = DOCK_STATE_UNDOCKED;
 

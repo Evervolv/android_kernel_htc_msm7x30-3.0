@@ -2,6 +2,7 @@
 #define _LINUX_ATMEL_H
 
 #include <linux/bitops.h>
+#include <linux/input.h>
 
 #define ATMEL_QT602240_NAME "atmel_qt602240"
 #define ATMEL_MXT224E_NAME "atmel_mxt224e"
@@ -496,6 +497,27 @@ struct atmel_config_data {
 	int8_t *config_T55;
 	int8_t *config_T58;
 };
+
+/* Sweep to wake values are
+ * 0 = no sweep2wake
+ * 1 = sweep2wake with no backlight
+ * 2 = sweep2wake with backlight
+ */
+enum {
+	S2W_DISABLED = 0,
+	S2W_ENABLED = 1,
+};
+
+#if defined (CONFIG_MACH_GLACIER)
+#define SWEEP2WAKE_KEY "glacier-keypad"
+#elif defined (CONFIG_MACH_SPEEDY)
+#define SWEEP2WAKE_KEY "speedy-keypad"
+#elif defined (CONFIG_MACH_VIVOW)
+#define SWEEP2WAKE_KEY "vivow-keypad"
+#endif
+
+/* Sweep2Wake */
+void sweep2wake_setdev(struct input_dev * input_device);
 
 #endif
 

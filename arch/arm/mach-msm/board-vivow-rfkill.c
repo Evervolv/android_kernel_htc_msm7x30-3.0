@@ -191,13 +191,6 @@ static void vivow_config_bt_off(void)
 				ARRAY_SIZE(vivow_bt_off_table));
 	mdelay(2);
 
-	/* BT_RTS */
-	/* BT_CTS */
-	/* BT_TX */
-	/* BT_RX */
-
-	/* BT_HOST_WAKE */
-
 	/* BT_CHIP_WAKE */
 	gpio_set_value(VIVOW_GPIO_BT_CHIP_WAKE, 0);
 

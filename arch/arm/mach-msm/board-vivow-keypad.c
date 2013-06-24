@@ -89,14 +89,8 @@ static struct platform_device vivow_keypad_input_device = {
 		.platform_data	= &vivow_keypad_data,
 	},
 };
-/*
-static int vivow_reset_keys_up[] = {
-	KEY_VOLUMEUP,
-	0
-};
-*/
+
 static struct keyreset_platform_data vivow_reset_keys_pdata = {
-	/*.keys_up = vivow_reset_keys_up,*/
 	.keys_down = {
 		KEY_POWER,
 		KEY_VOLUMEDOWN,

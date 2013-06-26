@@ -1725,6 +1725,8 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 
 	if (!mmc_attach_sd(host))
 		return 0;
+	else if (mmc_is_sd_host(host))
+		printk(KERN_ERR "%s : %s attach sd fail\n", mmc_hostname(host), __func__);
 
 	if (!host->ios.vdd)
 		mmc_power_up(host);

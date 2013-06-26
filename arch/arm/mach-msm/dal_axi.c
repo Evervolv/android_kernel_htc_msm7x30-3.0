@@ -14,7 +14,7 @@
 
 /* The AXI device ID */
 #define DALDEVICEID_AXI   0x02000053
-#if defined(CONFIG_ARCH_MSM7X27A)
+#if defined(CONFIG_ARCH_MSM7X27A) || defined(CONFIG_MACH_MECHA)
 #define DALRPC_PORT_NAME  "DAL00"
 #else
 #define DALRPC_PORT_NAME  "SMD_DAL00"

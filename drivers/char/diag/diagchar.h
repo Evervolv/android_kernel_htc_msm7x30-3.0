@@ -248,7 +248,7 @@ struct diagchar_dev {
 #define EPST_FUN 1
 #define HPST_FUN 0
 
-#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_MSM7X27A)
+#if defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) || defined(CONFIG_ARCH_MSM7X27A) || defined(CONFIG_MACH_MECHA) 
 #define	SMDDIAG_NAME "DIAG"
 #else
 #define	SMDDIAG_NAME "SMD_DIAG"

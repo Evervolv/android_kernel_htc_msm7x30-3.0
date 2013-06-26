@@ -94,6 +94,7 @@ extern struct panel_icm_info *panel_icm;
 extern wait_queue_head_t panel_update_wait_queue;
 #endif
 
+static int is_mdp_clock_192HZ = 0;
 static int z_order_change = 0;
 #ifdef CONFIG_FB_MSM_LCDC
 static void mdp4_reset_mdp_clk(struct work_struct *w);
@@ -1610,7 +1611,8 @@ static int get_img(struct msmfb_data *img, struct fb_info *info,
 
 	if (MAJOR(file->f_dentry->d_inode->i_rdev) == FB_MAJOR) {
 		fb_num = MINOR(file->f_dentry->d_inode->i_rdev);
-		if (get_fb_phys_info(start, len, fb_num))
+		if (get_fb_phys_info(start, len, fb_num,
+			DISPLAY_SUBSYSTEM_ID))
 			ret = -1;
 		else
 			*pp_file = file;
@@ -1933,8 +1935,9 @@ int mdp4_overlay_unset(struct mdp_device *mdp_dev, struct fb_info *info, int ndx
 #ifdef CONFIG_FB_MSM_LCDC
 static void mdp4_reset_mdp_clk(struct work_struct *w)
 {
-    if(mdp_clk) {
+    if(mdp_clk && is_mdp_clock_192HZ) {
         clk_set_rate(mdp_clk, 122880000);
+	is_mdp_clock_192HZ = 0;
         PR_DISP_INFO("%s reset mdp clk\n", __func__);
     }
 }
@@ -2100,13 +2103,15 @@ int mdp4_overlay_play(struct mdp_device *mdp_dev, struct fb_info *info, struct m
 #ifdef CONFIG_FB_MSM_LCDC
 
     video_size = pipe->src_width * pipe->src_height / 10000;
-    if(mdp->out_if[MSM_LCDC_INTERFACE].registered == 1 &&
+    if(mdp->out_if[MSM_LCDC_INTERFACE].registered == 1 && !is_mdp_clock_192HZ &&
     ((pipe->req_data.user_data[0] == 0 && video_size > 46 )||
 	(321 == pipe->dst_w && 192 == pipe->dst_h) ||
 	(240 == pipe->dst_w && 426 == pipe->dst_h))) {
         clk_set_rate(mdp->ebi1_clk, 192000000);
         clk_set_rate(mdp->clk, 192000000);
         clk_enable(mdp->clk);
+	PR_DISP_INFO("%s raise mdp clk\n", __func__);
+	is_mdp_clock_192HZ = 1;
     }
     else {
         clk_set_rate(mdp->ebi1_clk, 153000000);

@@ -48,6 +48,7 @@
 
 static int htc_otg_vbus;
 static int htc_otg_id = 1;
+static int USB_disabled;
 static struct msm_otg *the_msm_otg;
 
 enum {
@@ -57,7 +58,6 @@ enum {
 };
 
 static DEFINE_MUTEX(notify_sem);
-static DEFINE_MUTEX(smwork_sem);
 static void msm_otg_start_peripheral(struct otg_transceiver *otg, int on);
 #ifdef CONFIG_CABLE_DETECT_GPIO_DOCK
 static int carkit_phy_reset(struct otg_transceiver *otg);
@@ -467,7 +467,7 @@ static void charger_detect_by_uart(void)
 		msm_otg_start_peripheral(otg, 0);
 		otg->state = OTG_STATE_B_IDLE;
 
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 		queue_work(motg->usb_wq, &motg->notifier_work);
 	} else {
 		USB_INFO("not AC charger\n");
@@ -488,7 +488,7 @@ static void charger_detect_by_uart(void)
 		motg->connect_type = CONNECT_TYPE_UNKNOWN;
 		motg->ac_detect_count = 0;
 
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 		queue_work(motg->usb_wq, &motg->notifier_work);
 	}
 }
@@ -1147,7 +1147,7 @@ skip_phy_resume:
 
 	if (aca_enabled() && !irq_read_line(motg->pdata->pmic_id_irq)) {
 		clear_bit(ID, &motg->inputs);
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 	}
 
 	if (motg->async_int) {
@@ -1186,8 +1186,9 @@ static void msm_otg_notify_usb_attached(int connect_type)
 		motg->connect_type = CONNECT_TYPE_USB;
 		queue_work(motg->usb_wq, &motg->notifier_work);
 	}
+
 	motg->ac_detect_count = 0;
-	del_timer(&motg->ac_detect_timer);
+	__cancel_delayed_work(&motg->ac_detect_work);
 }
 
 static int msm_otg_set_power(struct otg_transceiver *otg, unsigned mA)
@@ -1311,7 +1312,7 @@ static int msm_otg_set_host(struct otg_transceiver *otg, struct usb_bus *host)
 				motg->pdata->vbus_power(0);
 			otg->host = NULL;
 			otg->state = OTG_STATE_UNDEFINED;
-			schedule_work(&motg->sm_work);
+			queue_work(system_nrt_wq, &motg->sm_work);
 		} else {
 			otg->host = NULL;
 		}
@@ -1334,7 +1335,7 @@ static int msm_otg_set_host(struct otg_transceiver *otg, struct usb_bus *host)
 	if (motg->pdata->mode == USB_HOST || otg->gadget) {
 		USB_WARNING("host only, otg->gadget exist\n");
 		pm_runtime_get_sync(otg->dev);
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 	}
 
 	return 0;
@@ -1398,7 +1399,7 @@ static int msm_otg_set_peripheral(struct otg_transceiver *otg,
 			msm_otg_start_peripheral(otg, 0);
 			otg->gadget = NULL;
 			otg->state = OTG_STATE_UNDEFINED;
-			schedule_work(&motg->sm_work);
+			queue_work(system_nrt_wq, &motg->sm_work);
 		} else {
 			otg->gadget = NULL;
 		}
@@ -1415,7 +1416,7 @@ static int msm_otg_set_peripheral(struct otg_transceiver *otg,
 	if (motg->pdata->mode == USB_PERIPHERAL || otg->host) {
 		USB_WARNING("peripheral only, otg->host exist\n");
 		pm_runtime_get_sync(otg->dev);
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 	}
 
 	return 0;
@@ -1585,7 +1586,7 @@ static void msm_otg_id_timer_func(unsigned long data)
 
 	if (msm_chg_check_aca_intr(motg)) {
 		dev_dbg(motg->otg.dev, "timer: aca work\n");
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 	}
 
 	if (!test_bit(ID, &motg->inputs) || test_bit(ID_A, &motg->inputs))
@@ -1933,8 +1934,7 @@ static void msm_chg_detect_work(struct work_struct *w)
 		msm_chg_enable_aca_intr(motg);
 		USBH_INFO("chg_type = %s\n",
 			chg_to_string(motg->chg_type));
-		schedule_work(&motg->sm_work);
-
+		queue_work(system_nrt_wq, &motg->sm_work);
 		queue_work(motg->usb_wq, &motg->notifier_work);
 		return;
 	default:
@@ -1983,7 +1983,8 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			else
 				clear_bit(ID, &motg->inputs);
 
-			if ((otgsc & OTGSC_BSV) || htc_otg_vbus) {
+/*			if ((otgsc & OTGSC_BSV) || htc_otg_vbus) {*/
+			if (htc_otg_vbus) {
 				set_bit(B_SESS_VLD, &motg->inputs);
 			} else
 				clear_bit(B_SESS_VLD, &motg->inputs);
@@ -2020,7 +2021,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg, sm_work);
 	struct otg_transceiver *otg = &motg->otg;
-
+	bool work = 0;
 	USBH_INFO("%s: state:%s bit:0x%08x\n", __func__,
 		state_string(otg->state), (unsigned) motg->inputs);
 
@@ -2030,7 +2031,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 		return;
 	}
 	pm_runtime_resume(otg->dev);
-	mutex_lock(&smwork_sem);
 	switch (otg->state) {
 	case OTG_STATE_UNDEFINED:
 		dev_dbg(otg->dev, "OTG_STATE_UNDEFINED state\n");
@@ -2110,13 +2110,22 @@ static void msm_otg_sm_work(struct work_struct *w)
 					/* Change USB SDP charger current from 100mA to 500mA
 					 * msm_otg_notify_charger(motg, IUNIT);
 					 */
-					msm_otg_notify_charger(motg, IDEV_CHG_MIN);
-					msm_otg_start_peripheral(otg, 1);
-					otg->state = OTG_STATE_B_PERIPHERAL;
-					motg->ac_detect_count = 0;
-					/*re-detect charger type only for projects who has no usb hub*/
-					if (!motg->pdata->usb_hub_enable)
-						mod_timer(&motg->ac_detect_timer, jiffies + (3 * HZ));
+					if (USB_disabled) {
+						USBH_INFO("Fake Sleep: disable USB function\n");
+						msm_otg_notify_charger(motg,IDEV_CHG_MIN);
+						if (motg->reset_phy_before_lpm)
+							msm_otg_reset(otg);
+						pm_runtime_put_noidle(otg->dev);
+						pm_runtime_suspend(otg->dev);
+					} else {
+						msm_otg_notify_charger(motg, IDEV_CHG_MIN);
+						msm_otg_start_peripheral(otg, 1);
+						otg->state = OTG_STATE_B_PERIPHERAL;
+						motg->ac_detect_count = 0;
+						/*re-detect charger type only for projects who has no usb hub*/
+						if (!motg->pdata->usb_hub_enable)
+							queue_delayed_work(system_nrt_wq, &motg->ac_detect_work, 3 * HZ);
+					 }
 					break;
 				default:
 					break;
@@ -2159,7 +2168,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 
 			msm_otg_start_peripheral(otg, 0);
 			otg->state = OTG_STATE_B_IDLE;
-			schedule_work(w);
+			work = 1;
 
 #ifdef CONFIG_USB_ANDROID_PROJECTOR
 			if (check_htc_mode_status() != NOT_ON_AUTOBOT) {
@@ -2168,19 +2177,21 @@ static void msm_otg_sm_work(struct work_struct *w)
 			}
 #endif
 			motg->ac_detect_count = 0;
-			del_timer(&motg->ac_detect_timer);
+			cancel_delayed_work_sync(&motg->ac_detect_work);
 		} else if (test_bit(ID_C, &motg->inputs)) {
 			USBH_INFO("id_c\n");
 			msm_otg_notify_charger(motg, IDEV_ACA_CHG_MAX);
 		} else if (test_bit(B_SESS_VLD, &motg->inputs)) {
 			/* redetect to China AC*/
-			if (motg->chg_type == USB_DCP_CHARGER) {
+			if (motg->chg_type == USB_DCP_CHARGER ||
+				(motg->chg_type == USB_SDP_CHARGER &&
+				 USB_disabled)
+				) {
 				msm_otg_start_peripheral(otg, 0);
 				otg->state = OTG_STATE_B_IDLE;
-				schedule_work(w);
-
+				work = 1;
 				motg->ac_detect_count = 0;
-				del_timer(&motg->ac_detect_timer);
+				cancel_delayed_work_sync(&motg->ac_detect_work);
 			} else
 				USBH_DEBUG("do nothing !!!\n");
 
@@ -2216,7 +2227,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 				msm_chg_enable_aca_intr(motg);
 			}
 			otg->state = OTG_STATE_B_IDLE;
-			schedule_work(w);
+			work = 1;
 		} else if (test_bit(ID_A, &motg->inputs)) {
 			USBH_INFO("id_a\n");
 			if (motg->pdata->vbus_power)
@@ -2233,7 +2244,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 	default:
 		break;
 	}
-	mutex_unlock(&smwork_sem);
+	if (work)
+		queue_work(system_nrt_wq, &motg->sm_work);
 }
 
 void msm_hsusb_vbus_notif_register(void (*vbus_notif)(int))
@@ -2250,6 +2262,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 	struct msm_otg *motg = data;
 	struct otg_transceiver *otg = &motg->otg;
 	u32 otgsc = 0, usbsts;
+	bool work = 0;
 
 	if (atomic_read(&motg->in_lpm)) {
 		disable_irq_nosync(irq);
@@ -2264,7 +2277,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 		writel(PHY_ALT_INT, USB_USBSTS);
 		if (msm_chg_check_aca_intr(motg)) {
 			dev_dbg(otg->dev, "ACA work from IRQ\n");
-			schedule_work(&motg->sm_work);
+			queue_work(system_nrt_wq, &motg->sm_work);
 		}
 		return IRQ_HANDLED;
 	}
@@ -2282,7 +2295,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 			clear_bit(ID, &motg->inputs);
 			msm_chg_enable_aca_det(motg);
 		}
-		schedule_work(&motg->sm_work);
+		work = 1;
 	} else if ((otgsc & OTGSC_BSVIS) && (otgsc & OTGSC_BSVIE)) {
 		if (motg->pdata->otg_control == OTG_PHY_CONTROL) {
 			if (otgsc & OTGSC_BSV) {
@@ -2293,7 +2306,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				msm_chg_check_aca_intr(motg);
 			}
-			schedule_work(&motg->sm_work);
+			work = 1;
 		}
 		if (motg->vbus_notification_cb) {
 			if (otgsc & OTGSC_BSV) {
@@ -2305,6 +2318,8 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 			}
 		}
 	}
+	if (work)
+		queue_work(system_nrt_wq, &motg->sm_work);
 
 	writel(otgsc, USB_OTGSC);
 	return IRQ_HANDLED;
@@ -2314,7 +2329,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
  * Since D+/D- status is not involved, there is no timing issue between
  * D+/D- and VBUS. 9V AC should NOT be found here.
  */
-static void ac_detect_expired(unsigned long _data)
+static void ac_detect_expired_work(struct work_struct *w)
 {
 	u32 delay = 0;
 	struct msm_otg *motg = the_msm_otg;
@@ -2342,7 +2357,7 @@ static void ac_detect_expired(unsigned long _data)
 
 				msm_otg_start_peripheral(otg, 0);
 				otg->state = OTG_STATE_B_IDLE;
-				schedule_work(&motg->sm_work);
+				queue_work(system_nrt_wq, &motg->sm_work);
 
 				queue_work(motg->usb_wq, &motg->notifier_work);
 				return;
@@ -2354,7 +2369,7 @@ static void ac_detect_expired(unsigned long _data)
 		else if (motg->ac_detect_count == 2)
 			delay = 10 * HZ;
 
-		mod_timer(&motg->ac_detect_timer, jiffies + delay);
+		queue_delayed_work(system_nrt_wq, &motg->ac_detect_work, delay);
 	} else {
 		USBH_INFO("AC charger\n");
 		motg->chg_type = USB_DCP_CHARGER;
@@ -2364,7 +2379,7 @@ static void ac_detect_expired(unsigned long _data)
 
 		msm_otg_start_peripheral(otg, 0);
 		otg->state = OTG_STATE_B_IDLE;
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 
 		queue_work(motg->usb_wq, &motg->notifier_work);
 	}
@@ -2399,7 +2414,7 @@ void msm_otg_set_id_state(int id)
 
 	/* Hold a wake_lock so that it will not sleep in detection */
 	wake_lock_timeout(&motg->cable_detect_wlock, 3 * HZ);
-	schedule_work(&motg->sm_work);
+	queue_work(system_nrt_wq, &motg->sm_work);
 }
 
 static void usb_host_cable_detect(bool cable_in)
@@ -2414,6 +2429,15 @@ static void usb_host_cable_detect(bool cable_in)
 int msm_otg_get_vbus_state(void)
 {
 	return htc_otg_vbus;
+}
+
+void msm_otg_set_disable_usb(int disable_usb)
+{
+	struct msm_otg *motg = the_msm_otg;
+
+	USB_disabled = disable_usb;
+
+	queue_work(system_nrt_wq, &motg->sm_work);
 }
 
 void msm_otg_set_vbus_state(int online)
@@ -2463,7 +2487,7 @@ void msm_otg_set_vbus_state(int online)
 
 	/* Hold a wake_lock so that it will not sleep in detection */
 	wake_lock_timeout(&motg->cable_detect_wlock, 3 * HZ);
-	schedule_work(&motg->sm_work);
+	queue_work(system_nrt_wq, &motg->sm_work);
 }
 
 #if 0 /* HTC doesn't use this pin to trigger ID interrupt */
@@ -2572,7 +2596,7 @@ static ssize_t msm_otg_mode_write(struct file *file, const char __user *ubuf,
 	}
 
 	pm_runtime_resume(otg->dev);
-	schedule_work(&motg->sm_work);
+	queue_work(system_nrt_wq, &motg->sm_work);
 out:
 	return status;
 }
@@ -2987,12 +3011,11 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	INIT_WORK(&motg->notifier_work, send_usb_connect_notify);
 	if (motg->pdata->usb_hub_enable)
 		INIT_WORK(&motg->usb_hub_work, do_usb_hub_disable);
+	INIT_DELAYED_WORK(&motg->ac_detect_work, ac_detect_expired_work);
 	INIT_DELAYED_WORK(&motg->chg_work, msm_chg_detect_work);
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);
 	motg->ac_detect_count = 0;
-	motg->ac_detect_timer.function = ac_detect_expired;
-	init_timer(&motg->ac_detect_timer);
 
 	ret = request_irq(motg->irq, msm_otg_irq, IRQF_SHARED,
 					"msm_otg", motg);

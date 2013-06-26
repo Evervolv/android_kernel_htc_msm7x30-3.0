@@ -1116,10 +1116,11 @@ static int diagcharmdm_open(struct inode *inode, struct file *file)
 		driver->mdmdata_ready[i] |= EVENT_MASKS_TYPE;
 		driver->mdmdata_ready[i] |= LOG_MASKS_TYPE;
 
+#if defined(CONFIG_ARCH_MSM8X60_LTE)
 		if (driver->ref_count == 0)
 			diagmem_init(driver);
 		driver->ref_count++;
-
+#endif
 		mutex_unlock(&driver->diagcharmdm_mutex);
 		return 0;
 	}
@@ -1139,11 +1140,14 @@ static int diagcharmdm_close(struct inode *inode, struct file *file)
 	if (driver) {
 		mutex_lock(&driver->diagcharmdm_mutex);
 
+#if defined(CONFIG_ARCH_MSM8X60_LTE)
 		driver->ref_count--;
 		/* On Client exit, try to destroy all 3 pools */
 		diagmem_exit(driver, POOL_TYPE_COPY);
 		diagmem_exit(driver, POOL_TYPE_HDLC);
 		diagmem_exit(driver, POOL_TYPE_WRITE_STRUCT);
+
+#endif
 
 		for (i = 0; i < driver->num_mdmclients; i++)
 			if (driver->mdmclient_map[i].pid == current->tgid) {
@@ -1386,6 +1390,9 @@ static const struct file_operations diagcharmdmfops = {
 	.open = diagcharmdm_open,
 	.release = diagcharmdm_close
 };
+#endif
+#if defined(CONFIG_ARCH_MSM8X60_LTE)
+			kfree(buf_9k);
 #endif
 
 static int diagchar_setup_cdev(dev_t devno)

@@ -378,7 +378,7 @@ static inline void mmc_signal_sdio_irq(struct mmc_host *host)
 }
 
 struct regulator;
-
+int mmc_is_sd_host(struct mmc_host *mmc);
 #ifdef CONFIG_REGULATOR
 int mmc_regulator_get_ocrmask(struct regulator *supply);
 int mmc_regulator_set_ocr(struct mmc_host *mmc,

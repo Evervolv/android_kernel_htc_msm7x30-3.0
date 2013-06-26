@@ -1882,6 +1882,12 @@ config MICROP_COMMON
 	help
 	  HTC Microp-P support.
 
+config HTC_SDIO_DEBUG
+	tristate "HTC sdio driver debug"
+	default n
+	help
+	  Enable HTC sdio driver debug.
+
 config HTC_HEADSET_MGR
 	tristate "HTC headset manager driver"
 	default n

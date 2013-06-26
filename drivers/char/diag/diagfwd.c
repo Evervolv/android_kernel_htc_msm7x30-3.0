@@ -96,6 +96,7 @@ void __diag_smd_send_req(void)
 	struct diag_request *write_ptr_modem = NULL;
 #if  DIAG_XPST
 	int type;
+	static int pkt_hdr, first_pkt = 1;
 #endif
 
 #ifdef SDQXDM_DEBUG
@@ -116,6 +117,7 @@ void __diag_smd_send_req(void)
 
 	if (driver->ch && buf) {
 		int r = smd_read_avail(driver->ch);
+		int s = smd_cur_packet_size(driver->ch);
 
 		if (r > IN_BUF_SIZE) {
 			if (r < MAX_IN_BUF_SIZE) {
@@ -157,11 +159,25 @@ void __diag_smd_send_req(void)
 				}
 
 #if DIAG_XPST
-				type = checkcmd_modem_epst(buf);
-				if (type) {
-					modem_to_userspace(buf, r, type, 0);
-					return;
+				/* HTC: only route to user space if the packet smd received
+				 * is the head of the full packet to avoid route wrong packet
+				 * to userspace. BTW, to avoid lost 1st packet (do not know if
+				 * the head of packet), we always check 1st packet. It should
+				 * be the 0xc sync packet.
+				 */
+				if (pkt_hdr || (first_pkt == 1)) {
+					if (unlikely(first_pkt == 1)) first_pkt = 0;
+					type = checkcmd_modem_epst(buf);
+					if (type) {
+						modem_to_userspace(buf, r, type, 0);
+						pkt_hdr = 1;
+						return;
+					}
+					pkt_hdr = 0;
 				}
+
+				if (r == s)
+					pkt_hdr = 1;
 #endif
 
 #ifdef SDQXDM_DEBUG
@@ -228,7 +244,11 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 				break;
 
 			if (i < driver->num_mdmclients) {
+#if defined(CONFIG_MACH_MECHA)
+				driver->mdmdata_ready[i] |= USER_SPACE_LOG_TYPE;
+#else
 				driver->mdmdata_ready[i] |= USERMODE_DIAGFWD;
+#endif
 				wake_up_interruptible(&driver->mdmwait_q);
 
 				return err;
@@ -314,9 +334,6 @@ void __diag_smd_wcnss_send_req(void)
 	void *buf = driver->buf_in_wcnss;
 	int *in_busy_wcnss_ptr = &(driver->in_busy_wcnss);
 	struct diag_request *write_ptr_wcnss = driver->write_ptr_wcnss;
-#if  DIAG_XPST
-	int type;
-#endif
 
 	if ((!driver->in_busy_wcnss) && driver->ch_wcnss && buf) {
 		int r = smd_read_avail(driver->ch_wcnss);
@@ -336,13 +353,6 @@ void __diag_smd_wcnss_send_req(void)
 				APPEND_DEBUG('i');
 				smd_read(driver->ch_wcnss, buf, r);
 				APPEND_DEBUG('j');
-#if  DIAG_XPST
-				type = checkcmd_modem_epst(buf);
-				if (type) {
-					modem_to_userspace(buf, r, type, 0);
-					return;
-				}
-#endif
 				write_ptr_wcnss->length = r;
 				*in_busy_wcnss_ptr = 1;
 				diag_device_write(buf, WCNSS_DATA,
@@ -357,9 +367,7 @@ void __diag_smd_qdsp_send_req(void)
 	void *buf = NULL;
 	int *in_busy_qdsp_ptr = NULL;
 	struct diag_request *write_ptr_qdsp = NULL;
-#if  DIAG_XPST
-	int type;
-#endif
+
 	if (!driver->in_busy_qdsp_1) {
 		buf = driver->buf_in_qdsp_1;
 		write_ptr_qdsp = driver->write_ptr_qdsp_1;
@@ -391,13 +399,6 @@ void __diag_smd_qdsp_send_req(void)
 				APPEND_DEBUG('i');
 				smd_read(driver->chqdsp, buf, r);
 				APPEND_DEBUG('j');
-#if  DIAG_XPST
-				type = checkcmd_modem_epst(buf);
-				if (type) {
-					modem_to_userspace(buf, r, type, 0);
-					return;
-				}
-#endif
 				write_ptr_qdsp->length = r;
 				*in_busy_qdsp_ptr = 1;
 				diag_device_write(buf, QDSP_DATA,
@@ -1332,7 +1333,8 @@ static int diag_smd_probe(struct platform_device *pdev)
 #if defined(CONFIG_MSM_N_WAY_SMD)
 	if (pdev->id == SMD_APPS_QDSP) {
 #if defined(CONFIG_MACH_MECHA) || defined(CONFIG_ARCH_MSM8X60_LTE)	\
-	|| defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960)
+	|| defined(CONFIG_ARCH_MSM8X60) || defined(CONFIG_ARCH_MSM8960) \
+	|| defined(CONFIG_MACH_MECHA)
 		r = smd_named_open_on_edge("DIAG", SMD_APPS_QDSP
 			, &driver->chqdsp, driver, diag_smd_qdsp_notify);
 #else

@@ -21,7 +21,7 @@ obj-$(CONFIG_SP3D) += sp3d.o
 obj-$(CONFIG_QS_S5K4E1) += qs_s5k4e1.o
 obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o
 
-obj-$(CONFIG_MACH_MECHA) += s5k6aafx_reg_mecha.o s5k3h1gx_mecha.o s5k3h1gx_reg_mecha.o#HTC_CAM chuck
+obj-$(CONFIG_MACH_MECHA) += s5k6aafx_reg_mecha.o
 obj-$(CONFIG_MACH_VIVO) += s5k6aafx_reg_vivo.o
 obj-$(CONFIG_MACH_VIVOW) += s5k6aafx_reg_vivo.o
 obj-$(CONFIG_MACH_VIVOW_CT) += s5k6aafx_reg_vivo.o

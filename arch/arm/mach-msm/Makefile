@@ -68,7 +68,7 @@ target += smd_rpc_sym.c
 $(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
 	$(call if_changed,mkrpcsym)
 
-obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock-8x60.o htc_drm.o htc_sdservice.o
+obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o htc_simlock-8x60.o htc_drm.o htc_sdservice.o htc_debug.o
 ifdef CONFIG_ARCH_MSM8960
 	obj-y += tz_log.o
 endif
@@ -150,6 +150,10 @@ obj-$(CONFIG_MSM_RPCSERVER_WATCHDOG) += rpc_server_dog_keepalive.o
 obj-$(CONFIG_MSM_RPCSERVER_TIME_REMOTE) += rpc_server_time_remote.o
 obj-$(CONFIG_MSM_RPCSERVER_HANDSET) += rpc_server_handset.o
 endif # End CONFIG_ARCH_MSM7X30_SMD
+
+ifeq ($(CONFIG_MACH_MECHA),y)
+obj-$(CONFIG_MSM_SDIO_DIAG) += sdio_diag.o
+endif
 
 obj-$(CONFIG_MSM_DSPS) += msm_dsps.o
 obj-$(CONFIG_MSM_RESET_MODEM) += reset_modem.o
@@ -491,7 +495,7 @@ obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o
 obj-$(CONFIG_MACH_SAGA) += display/saga-panel.o display/panel-sonywvga-s6d16a0x21-7x30.o
 obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_SAGA) += htc_bdaddress.o
-obj-$(CONFIG_MACH_MECHA) += board-mecha.o
+obj-$(CONFIG_MACH_MECHA) += board-mecha.o htc_util_7x30.o
 obj-$(CONFIG_MACH_MECHA) += board-mecha-keypad.o
 obj-$(CONFIG_MACH_MECHA)+= board-mecha-mmc.o board-mecha-wifi.o
 obj-$(CONFIG_MACH_MECHA) += display/mecha-panel.o board-mecha-audio.o

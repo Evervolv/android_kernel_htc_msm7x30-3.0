@@ -549,8 +549,11 @@ static struct i2c_board_info i2c_devices[] = {
 		I2C_BOARD_INFO("tps65200", 0xD4 >> 1),
 		.platform_data = &tps65200_data,
 	},
+};
+
+static struct i2c_board_info i2c_a1026_devices[] = {
 	{
-		I2C_BOARD_INFO("audience_a1026", 0x3E),
+			I2C_BOARD_INFO("audience_a1026", 0x3E),
 			.platform_data = &a1026_data,
 	},
 };
@@ -1539,34 +1542,18 @@ static void __init aux_pcm_gpio_init(void)
 		ARRAY_SIZE(aux_pcm_gpio_off));
 }
 
-#ifdef CONFIG_VP_A1026
-static uint32_t audience_gpio_on_table[] = {
-	PCOM_GPIO_CFG(GLACIER_AUD_A1026_INT, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
-	PCOM_GPIO_CFG(GLACIER_AUD_MICPATH_SEL, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
-	PCOM_GPIO_CFG(GLACIER_AUD_A1026_RESET, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
-	PCOM_GPIO_CFG(GLACIER_AUD_A1026_WAKEUP, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
-};
-
-static void __init audience_gpio_init(void)
+static void __init audience_gpio_reset(void)
 {
-	/* Bit2:
-	 * 0: with audience.
-	 * 1: without audience
-	 */
-	if (engineerid & 0x4) {
-		config_gpio_table(audience_gpio_on_table, ARRAY_SIZE(audience_gpio_on_table));
-		gpio_set_value(GLACIER_AUD_A1026_INT, 0);
-		mdelay(1);
-		gpio_set_value(GLACIER_AUD_MICPATH_SEL, 0);
-		mdelay(1);
-		gpio_set_value(GLACIER_AUD_A1026_RESET, 0);
-		mdelay(1);
-		gpio_set_value(GLACIER_AUD_A1026_WAKEUP, 0);
-		mdelay(1);
-		pr_info("Configure audio codec gpio for devices without audience.\n");
-	}
+	gpio_set_value(GLACIER_AUD_A1026_INT, 0);
+	mdelay(2);
+	gpio_set_value(GLACIER_AUD_MICPATH_SEL, 0);
+	mdelay(1);
+	gpio_set_value(GLACIER_AUD_A1026_RESET, 0);
+	mdelay(2);
+	gpio_set_value(GLACIER_AUD_A1026_WAKEUP, 0);
+	mdelay(5);
+	pr_info("Configure audio codec gpio for devices without audience.\n");
 }
-#endif
 
 #ifdef CONFIG_USB_G_ANDROID
 static struct android_usb_platform_data android_usb_pdata = {
@@ -3153,9 +3140,15 @@ static void __init glacier_init(void)
 #ifdef CONFIG_MSM7KV2_AUDIO
 	aux_pcm_gpio_init();
 	msm_snddev_init();
-	audience_gpio_init();
 	glacier_audio_init();
 #endif
+	/*Bit2: 0: with audience. 1: without audience*/
+	if (engineerid & 0x4)
+		audience_gpio_reset();
+	else
+		i2c_register_board_info(0, i2c_a1026_devices,
+				ARRAY_SIZE(i2c_a1026_devices));
+
 	msm_init_pmic_vibrator(3000);
 
 	i2c_register_board_info(2, msm_marimba_board_info,

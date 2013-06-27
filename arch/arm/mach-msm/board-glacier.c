@@ -568,216 +568,154 @@ static int pm8058_gpios_init(void)
 {
 	int rc;
 
-	static struct pm_gpio oj_act = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+	struct pm8xxx_gpio_init_info keypad_gpio = {
+		PM8058_GPIO_PM_TO_SYS(0),
+		{
+			.direction      = PM_GPIO_DIR_IN,
+			.output_buffer  = 0,
+			.output_value   = 0,
+			.pull           = PM_GPIO_PULL_UP_31P5,
+			.vin_sel        = PM8058_GPIO_VIN_S3,
+			.out_strength   = 0,
+			.function       = PM_GPIO_FUNC_NORMAL,
+		}
 	};
 
-	static struct pm_gpio home_key = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+	struct pm8xxx_gpio_init_info camera_gpio = {
+		PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_STEP1),
+		{
+			.direction      = PM_GPIO_DIR_IN,
+			.output_buffer  = 0,
+			.output_value   = 0,
+			.pull           = PM_GPIO_PULL_UP_31P5,
+			.vin_sel        = PM8058_GPIO_VIN_S3,
+			.out_strength   = PM_GPIO_STRENGTH_NO,
+			.function       = PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol    = 0,
+		}
 	};
 
-	static struct pm_gpio back_key = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+	struct pm8xxx_gpio_init_info camera_gpio2 = {
+		PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_STEP2),
+		{
+			.direction      = PM_GPIO_DIR_IN,
+			.output_buffer  = 0,
+			.output_value   = 0,
+			.pull           = PM_GPIO_PULL_UP_31P5,
+			.vin_sel        = PM8058_GPIO_VIN_S3,
+			.out_strength   = PM_GPIO_STRENGTH_NO,
+			.function       = PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol    = 0,
+		}
 	};
 
-	static struct pm_gpio menu_key = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+	struct pm8xxx_gpio_init_info proximity_gpio = {
+		PM8058_GPIO_PM_TO_SYS(GLACIER_PS_SHDN),
+		{
+			.direction      = PM_GPIO_DIR_OUT,
+			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+			.output_value   = 0,
+			.pull           = PM_GPIO_PULL_NO,
+			.vin_sel        = PM8058_GPIO_VIN_L5,
+			.out_strength   = PM_GPIO_STRENGTH_HIGH,
+			.function       = PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol    = 0,
+		}
 	};
 
-	static struct pm_gpio send_key = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+	struct pm8xxx_gpio_init_info headset_gpio = {
+		PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
+		{
+			.direction      = PM_GPIO_DIR_IN,
+			.output_buffer  = 0,
+			.output_value   = 0,
+			.pull           = PM_GPIO_PULL_UP_31P5,
+			.vin_sel        = PM8058_GPIO_VIN_S3,
+			.out_strength   = PM_GPIO_STRENGTH_LOW,
+			.function       = PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol    = 0,
+		}
 	};
 
-	static struct pm_gpio vol_up = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+	struct pm8xxx_gpio_init_info speaker_gpio = {
+		PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO),
+		{
+			.direction      = PM_GPIO_DIR_OUT,
+			.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+			.output_value   = 1,
+			.pull           = PM_GPIO_PULL_NO,
+			.vin_sel        = PM8058_GPIO_VIN_S3,
+			.out_strength   = PM_GPIO_STRENGTH_LOW,
+			.function       = PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol    = 0,
+		}
 	};
 
-	static struct pm_gpio vol_dn = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
+#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
+	struct pm8xxx_gpio_init_info sdcc_det = {
+		PM8058_GPIO_PM_TO_SYS(GLACIER_SDMC_CD_N),
+		{
+			.direction      = PM_GPIO_DIR_IN,
+			.pull           = PM_GPIO_PULL_UP_1P5,
+			.vin_sel        = 2,
+			.function       = PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol    = 0,
+		},
 	};
 
-	static struct pm_gpio cam_step1 = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
-
-	static struct pm_gpio cam_step2 = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_NO,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
-
-	static struct pm_gpio headset = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_LOW,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
-
-	static struct pm_gpio ps_en = {
-		.direction      = PM_GPIO_DIR_OUT,
-		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_NO,
-		.vin_sel        = PM8058_GPIO_VIN_L5,
-		.out_strength   = PM_GPIO_STRENGTH_HIGH,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
-
-	static struct pm_gpio spk_eno = {
-		.direction      = PM_GPIO_DIR_OUT,
-		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-		.output_value   = 1,
-		.pull           = PM_GPIO_PULL_NO,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = PM_GPIO_STRENGTH_LOW,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
-
-
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_OJ_ACTION), &oj_act);
+	rc = pm8xxx_gpio_config(sdcc_det.gpio, &sdcc_det.config);
 	if (rc) {
-		printk(KERN_ERR "%s OJ_ACTION config failed\n", __func__);
+		pr_err("%s SDMC_CD_N config failed\n", __func__);
 		return rc;
-	} else
-	  printk(KERN_ERR "%s OJ_ACTION config ok\n", __func__);
+	}
+#endif
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_VOL_UP), &vol_up);
-	if (rc) {
-		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s VOL_UP config ok\n", __func__);
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_VOL_DN), &vol_dn);
-	if (rc) {
-		printk(KERN_ERR "%s VOL_DN config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s VOL_DN config ok\n", __func__);
+	keypad_gpio.gpio = GLACIER_OJ_ACTION;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_HOME_KEY), &home_key);
-	if (rc) {
-		printk(KERN_ERR "%s HOME_KEY config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s HOME_KEY config ok\n", __func__);
+	keypad_gpio.gpio = GLACIER_HOME_KEY;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
+	keypad_gpio.gpio = GLACIER_MENU_KEY;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
+	keypad_gpio.gpio = GLACIER_BACK_KEY;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
+	keypad_gpio.gpio = GLACIER_SEND_KEY;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_BACK_KEY), &back_key);
-	if (rc) {
-		printk(KERN_ERR "%s BACK_KEY config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s BACK_KEY config ok\n", __func__);
+	keypad_gpio.gpio = GLACIER_VOL_UP;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
+	keypad_gpio.gpio = GLACIER_VOL_DN;
+	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_MENU_KEY), &menu_key);
-	if (rc) {
-		printk(KERN_ERR "%s MENU_KEY config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s MENU_KEY config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_SEND_KEY), &send_key);
-	if (rc) {
-		printk(KERN_ERR "%s SEND_KEY config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s SEND_KEY config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_STEP1), &cam_step1);
+	rc = pm8xxx_gpio_config(camera_gpio.gpio, &camera_gpio.config);
 	if (rc) {
 		printk(KERN_ERR "%s CAM_STEP1 config failed\n", __func__);
 		return rc;
 	} else
 	  printk(KERN_ERR "%s CAM_STEP1 config ok\n", __func__);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_STEP2), &cam_step2);
+	rc = pm8xxx_gpio_config(camera_gpio2.gpio, &camera_gpio2.config);
 	if (rc) {
 		printk(KERN_ERR "%s CAM_STEP2 config failed\n", __func__);
 		return rc;
 	} else
 	  printk(KERN_ERR "%s CAM_STEP2 config ok\n", __func__);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz), &headset);
-	if (rc) {
-		printk(KERN_ERR "%s AUD_HP_DETz config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s AUD_HP_DETz config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_PS_SHDN), &ps_en);
+	rc = pm8xxx_gpio_config(proximity_gpio.gpio, &proximity_gpio.config);
 	if (rc) {
 		printk(KERN_ERR "%s PS_SHDN config failed\n", __func__);
 		return rc;
 	} else
 	  printk(KERN_ERR "%s PS_SHDN config ok\n", __func__);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_SPK_ENO), &spk_eno);
+	rc = pm8xxx_gpio_config(headset_gpio.gpio, &headset_gpio.config);
+	if (rc) {
+		printk(KERN_ERR "%s AUD_HP_DETz config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s AUD_HP_DETz config ok\n", __func__);
+
+	rc = pm8xxx_gpio_config(speaker_gpio.gpio, &speaker_gpio.config);
 	if (rc) {
 		printk(KERN_ERR "%s AUD_SPK_ENO config failed\n", __func__);
 		return rc;

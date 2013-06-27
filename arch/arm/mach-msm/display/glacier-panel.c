@@ -177,6 +177,8 @@ static void glacier_backlight_switch(int on)
 		glacier_set_dim = 1;
 	} else {
 		clear_bit(GATE_ON, &cabc.status);
+		if (val != 0)
+			glacier_set_brightness(&cabc.lcd_backlight, 0);
 		cabc.last_shrink_br = 0;
 	}
 }

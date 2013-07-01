@@ -98,6 +98,9 @@
 #include "acpuclock.h"
 #include <mach/dal_axi.h>
 #include <mach/msm_serial_hs.h>
+#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+#include <mach/bcm_bt_lpm.h>
+#endif
 #include <mach/htc_sleep_clk.h>
 #include <mach/htc_fast_clk.h>
 #include <mach/qdsp5v2/mi2s.h>
@@ -2777,11 +2780,30 @@ static struct platform_device msm_adc_device = {
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 	.inject_rx_on_wakeup = 0,
 	.cpu_lock_supported = 1,
-
+#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
+#endif
 	/* for brcm BT */
 	.bt_wakeup_pin_supported = 1,
 	.bt_wakeup_pin = MECHA_GPIO_BT_CHIP_WAKE,
 	.host_wakeup_pin = MECHA_GPIO_BT_HOST_WAKE,
+};
+#endif
+
+#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+static struct bcm_bt_lpm_platform_data bcm_bt_lpm_pdata = {
+	.gpio_wake = MECHA_GPIO_BT_CHIP_WAKE,
+	.gpio_host_wake = MECHA_GPIO_BT_HOST_WAKE,
+	.request_clock_off_locked = msm_hs_request_clock_off_locked,
+	.request_clock_on_locked = msm_hs_request_clock_on_locked,
+};
+
+struct platform_device mecha_bcm_bt_lpm_device = {
+	.name = "bcm_bt_lpm",
+	.id = 0,
+	.dev = {
+		.platform_data = &bcm_bt_lpm_pdata,
+	},
 };
 #endif
 
@@ -3178,6 +3200,9 @@ static struct platform_device *devices[] __initdata = {
 	&msm_ebi1_thermal,
 #ifdef CONFIG_SERIAL_MSM_HS
 	&msm_device_uart_dm1,
+#endif
+#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+        &mecha_bcm_bt_lpm_device,
 #endif
 #ifdef CONFIG_BT
 	&mecha_rfkill,

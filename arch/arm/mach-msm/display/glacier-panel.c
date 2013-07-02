@@ -162,11 +162,11 @@ glacier_get_brightness(struct led_classdev *led_cdev)
 static void glacier_backlight_switch(int on)
 {
 	enum led_brightness val;
+	val = cabc.lcd_backlight.brightness;
 
 	if (on) {
 		printk(KERN_DEBUG "turn on backlight\n");
 		set_bit(GATE_ON, &cabc.status);
-		val = cabc.lcd_backlight.brightness;
 		/* LED core uses get_brightness for default value
 		 * If the physical layer is not ready, we should
 		 * not count on it */

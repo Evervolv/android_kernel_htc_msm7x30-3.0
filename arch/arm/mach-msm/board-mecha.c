@@ -4299,8 +4299,12 @@ static void __init mecha_init(void)
 	acpuclk_init(&acpuclk_7x30_soc_data);
 
 #ifdef CONFIG_SERIAL_MSM_HS
+#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+	msm_uart_dm1_pdata.rx_wakeup_irq = -1;
+#else
 	msm_uart_dm1_pdata.rx_wakeup_irq = gpio_to_irq(MECHA_GPIO_BT_HOST_WAKE);
 	msm_device_uart_dm1.name = "msm_serial_hs_brcm";
+#endif
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
 #endif
 

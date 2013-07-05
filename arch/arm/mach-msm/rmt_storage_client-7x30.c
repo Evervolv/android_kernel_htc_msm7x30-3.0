@@ -1216,7 +1216,7 @@ static struct platform_driver rmt_storage_driver = {
 		since we need to backup NV before poweroff/reset */
 	.shutdown = NULL,
 	.driver	= {
-#if 0 /* new 8x60 smd/rpc */
+#if defined(CONFIG_MACH_MECHA) /* new 8x60 smd/rpc */
 		.name 	= "rs00000000",
 #else /* previous 7x30 smd/rpc */
 		.name 	= "rs00000000:00000000",

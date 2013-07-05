@@ -514,6 +514,8 @@ enum {
 #define SWEEP2WAKE_KEY "speedy-keypad"
 #elif defined (CONFIG_MACH_VIVOW)
 #define SWEEP2WAKE_KEY "vivow-keypad"
+#elif defined (CONFIG_MACH_MECHA)
+#define SWEEP2WAKE_KEY "mecha-keypad"
 #endif
 
 /* Sweep2Wake */

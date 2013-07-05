@@ -338,7 +338,6 @@ static int tstats_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-#ifdef CONFIG_ARCH_MSM8X60_LTE
 void htc_prink_name_offset(unsigned long addr)
 {
 	char symname[KSYM_NAME_LEN];
@@ -402,7 +401,6 @@ void htc_timer_stats_show(u16 water_mark)
 
 	mutex_unlock(&show_mutex);
 }
-#endif
 
 /*
  * After a state change, make sure all concurrent lookup/update
@@ -458,7 +456,6 @@ static ssize_t tstats_write(struct file *file, const char __user *buf,
 	return count;
 }
 
-#ifdef CONFIG_ARCH_MSM8X60_LTE
 void htc_timer_stats_OnOff(char OnOff)
 {
 	mutex_lock(&show_mutex);
@@ -483,7 +480,6 @@ void htc_timer_stats_OnOff(char OnOff)
 	}
 	mutex_unlock(&show_mutex);
 }
-#endif
 
 static int tstats_open(struct inode *inode, struct file *filp)
 {

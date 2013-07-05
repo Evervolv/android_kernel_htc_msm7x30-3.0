@@ -827,7 +827,8 @@ static int get_img(struct msmfb_data *fbd, unsigned char src,
 
 		if (MAJOR(file->f_dentry->d_inode->i_rdev) == FB_MAJOR) {
 			fb_num = MINOR(file->f_dentry->d_inode->i_rdev);
-			if (get_fb_phys_info(start, len, fb_num)) {
+			if (get_fb_phys_info(start, len, fb_num,
+				ROTATOR_SUBSYSTEM_ID)) {
 				pr_err("get_fb_phys_info() failed\n");
 				ret = -1;
 			} else {

@@ -494,7 +494,7 @@ static long fm_rx_task(struct fmdrv_chr_ops *fm_chr_dev)
 	spin_lock_irqsave(&fm_chr_dev->lock, flags);
 
 	if (skb_queue_empty(&fm_chr_dev->rx_q)) {
-		FM_CHR_DRV_ERR(" Rx Queue empty ");
+		FM_CHR_DRV_DBG(" Rx Queue empty ");
 		spin_unlock_irqrestore(&fm_chr_dev->lock, flags);
 		return FM_CHR_DRV_ERR_FAILURE;
 	}
@@ -820,7 +820,7 @@ static ssize_t fm_chr_read(struct file *fil, char __user *data, size_t size,
 					      !skb_queue_empty
 					      (&fm_chr_dev->rx_q), 500)) {
 
-		FM_CHR_DRV_ERR(" Read timed out ");
+		FM_CHR_DRV_DBG(" Read timed out ");
 		return -EAGAIN;
 	}
 	FM_CHR_DRV_VER(" Completed Read wait ");

@@ -916,18 +916,13 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	int err;
 	u32 cid[4];
 	u32 rocr = 0;
-	const char * init_step_name[] = {"None", "ident", "stby", "tran"};
-	int init_step = 0;
-	const int IDENT = 1, STBY = 2, TRAN = 3;
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
 	err = mmc_sd_get_cid(host, ocr, cid, &rocr);
-	if (err) {
-		init_step = IDENT;
+	if (err)
 		return err;
-	}
 
 	if (oldcard) {
 		if (memcmp(cid, oldcard->raw_cid, sizeof(cid)) != 0)
@@ -951,10 +946,8 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (!mmc_host_is_spi(host)) {
 		err = mmc_send_relative_addr(host, &card->rca);
-		if (err) {
-			init_step = STBY;
+		if (err)
 			return err;
-		}
 
 		mmc_set_bus_mode(host, MMC_BUSMODE_PUSHPULL);
 	}
@@ -972,11 +965,8 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	 */
 	if (!mmc_host_is_spi(host)) {
 		err = mmc_select_card(card);
-		if (err) {
-			init_step = TRAN;
+		if (err)
 			return err;
-		} else
-			printk(KERN_ERR "%s : %s, go tran state\n", mmc_hostname(host), __func__);
 	}
 
 	err = mmc_sd_setup_card(host, card, oldcard != NULL);
@@ -1035,7 +1025,7 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 free_card:
 	if (!oldcard)
 		mmc_remove_card(card);
-	printk(KERN_ERR "%s : %s init flow fail at : %s\n", mmc_hostname(host), __func__, init_step_name[init_step]);
+
 	return err;
 }
 

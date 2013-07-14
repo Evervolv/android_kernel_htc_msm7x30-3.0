@@ -160,7 +160,6 @@ struct mmc_host *mmci_get_mmc(void)
 }
 EXPORT_SYMBOL(mmci_get_mmc);
 #endif
-struct mmc_host *g_wlan_mmc = NULL;
 //HTC_CSP_END
 
 
@@ -244,14 +243,6 @@ static int is_mmc_platform(struct mmc_platform_data *plat)
 		return 1;
 
 	return 0;
-}
-
-int mmc_is_sd_host(struct mmc_host *mmc) {
-	struct msmsdcc_host *host = mmc_priv(mmc);
-	if (host->plat->slot_type && *host->plat->slot_type == MMC_TYPE_SD)
-		return 1;
-	else
-		return 0;
 }
 
 int is_svlte_type_mmc_card(struct mmc_card *card)
@@ -636,7 +627,7 @@ void msmsdcc_switch_clock(struct mmc_host *mmc, int on)
 		if (mmc->card && mmc->card->type == MMC_TYPE_SDIO) {
 			if (mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ)
 				writel_relaxed(0, host->base + MMCIMASK0);
-			else if (is_wimax_platform(host->plat) || host->plat->is_sdio_al_client)
+			else if (is_wimax_platform(host->plat))
 				writel_relaxed(MCI_SDIOINTMASK, host->base + MMCIMASK0);
 #ifdef CONFIG_MMC_ATHEROS_SDIO
 			else if (is_wifi_slot(host->plat))
@@ -1903,9 +1894,12 @@ msmsdcc_irq(int irq, void *dev_id)
 		}
 
 		if (!host->clks_on) {
-			if (host->plat->is_sdio_al_client)
-				pr_debug("%s: %s: SDIO async irq received\n",
+
+#ifdef CONFIG_WIMAX
+    		if (is_wimax_platform(host->plat) && mmc_wimax_get_status())
+    			pr_info("%s: %s: SDIO async irq received\n",
     					mmc_hostname(host->mmc), __func__);
+#endif
 
 			msmsdcc_switch_clock(host->mmc, 1);
 			if (host->plat->cfg_mpm_sdiowakeup &&
@@ -2643,7 +2637,6 @@ static void msmsdcc_enable_irq_wake(struct msmsdcc_host *host)
 			host->core_irqres->start;
 
 	if (!host->irq_wake_enabled) {
-		pr_info("%s: enable irq wake (%d)\n", mmc_hostname(host->mmc), wakeup_irq);
 		enable_irq_wake(wakeup_irq);
 		host->irq_wake_enabled = true;
 	}
@@ -2658,7 +2651,6 @@ static void msmsdcc_disable_irq_wake(struct msmsdcc_host *host)
 			host->core_irqres->start;
 
 	if (host->irq_wake_enabled) {
-		pr_info("%s: disable irq wake (%d)\n", mmc_hostname(host->mmc), wakeup_irq);
 		disable_irq_wake(wakeup_irq);
 		host->irq_wake_enabled = false;
 	}
@@ -2705,7 +2697,7 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 					(mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ))
 						host->plat->cfg_mpm_sdiowakeup(
 						mmc_dev(mmc), SDC_DAT1_DISWAKE);
-					if (is_wimax_platform(host->plat) || host->plat->is_sdio_al_client)
+					if (is_wimax_platform(host->plat) || host->plat->is_sdio_al_client) /* Wifi doesn't use internal wake up irq */
 						msmsdcc_disable_irq_wake(host);
 				} else if (!(mmc->pm_flags &
 							MMC_PM_WAKE_SDIO_IRQ)) {
@@ -4352,12 +4344,10 @@ msmsdcc_probe(struct platform_device *pdev)
 	if (pdev->id < 1 || pdev->id > 5)
 		return -EINVAL;
 
-	#if 0
 	if (plat->is_sdio_al_client && !plat->sdiowakeup_irq) {
 		pr_err("[SD] %s: No wakeup IRQ for sdio_al client\n", __func__);
 		return -EINVAL;
 	}
-	#endif
 
 	if (pdev->resource == NULL || pdev->num_resources < 2) {
 		pr_err("[SD] %s: Invalid resource\n", __func__);
@@ -4596,12 +4586,6 @@ msmsdcc_probe(struct platform_device *pdev)
 	}
 #endif
 
-	if (is_wifi_slot(host->plat)) {
-		printk("wifi slot, set g_wlan_mmc\n");
-		mmc->caps |= MMC_CAP_NONREMOVABLE;
-		g_wlan_mmc = mmc;
-	}
-
 	/*
 	 * If we send the CMD23 before multi block write/read command
 	 * then we need not to send CMD12 at the end of the transfer.
@@ -4654,6 +4638,7 @@ msmsdcc_probe(struct platform_device *pdev)
 			  DRIVER_NAME " (pio)", host);
 	if (ret)
 		goto irq_free;
+
 	/*
 	 * Enable SDCC IRQ only when host is powered on. Otherwise, this
 	 * IRQ is un-necessarily being monitored by MPM (Modem power
@@ -4673,10 +4658,7 @@ msmsdcc_probe(struct platform_device *pdev)
 	disable_irq(core_irqres->start);
 	host->sdcc_irq_disabled = 1;
 
-	if (plat->is_sdio_al_client)
-		wake_lock_init(&host->sdio_wlock, WAKE_LOCK_SUSPEND,
-				mmc_hostname(mmc));
-	else if (plat->sdiowakeup_irq) {
+	if (plat->sdiowakeup_irq) {
 		wake_lock_init(&host->sdio_wlock, WAKE_LOCK_SUSPEND,
 				mmc_hostname(mmc));
 		ret = request_irq(plat->sdiowakeup_irq,
@@ -4895,16 +4877,6 @@ msmsdcc_probe(struct platform_device *pdev)
 	return ret;
 }
 
-void mmc_reset_nonremovable(void)
-{
-	printk("enter %s\n", __func__);
-	if (g_wlan_mmc) {
-		g_wlan_mmc->caps &= ~ MMC_CAP_NONREMOVABLE;
-		printk("remove MMC_CAP_NONREMOVABLE\n");
-	}
-}
-EXPORT_SYMBOL(mmc_reset_nonremovable);
-
 static int msmsdcc_remove(struct platform_device *pdev)
 {
 	struct mmc_host *mmc = mmc_get_drvdata(pdev);
@@ -4994,20 +4966,13 @@ int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable)
 			enable ? "En" : "Dis");
 
 	if (enable) {
-		#if 0
 		if (!host->sdcc_irq_disabled) {
 			writel_relaxed(0, host->base + MMCIMASK0);
 			disable_irq_nosync(host->core_irqres->start);
 			host->sdcc_irq_disabled = 1;
 		}
-		#endif
 
 		if (host->clks_on) {
-			if (!host->plat->sdiowakeup_irq) {
-				writel_relaxed(MCI_SDIOINTMASK,
-						host->base + MMCIMASK0);
-				mb();
-			}
 			msmsdcc_setup_clocks(host, false);
 			host->clks_on = 0;
 		}
@@ -5019,25 +4984,18 @@ int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable)
 			spin_lock_irqsave(&host->lock, flags);
 			host->sdio_gpio_lpm = 1;
 		}
-		#if 0
+
 		if (host->sdio_irq_disabled) {
 			msmsdcc_enable_irq_wake(host);
-			pr_info("%s: enable irq (%d)\n", mmc_hostname(mmc),
-				host->plat->sdiowakeup_irq);
 			enable_irq(host->plat->sdiowakeup_irq);
 			host->sdio_irq_disabled = 0;
 		}
-		#endif
 	} else {
-		#if 0
 		if (!host->sdio_irq_disabled) {
-			pr_info("%s: disable irq (%d)\n", mmc_hostname(mmc),
-				host->plat->sdiowakeup_irq);
 			disable_irq_nosync(host->plat->sdiowakeup_irq);
 			host->sdio_irq_disabled = 1;
 			msmsdcc_disable_irq_wake(host);
 		}
-		#endif
 
 		if (host->plat->sdio_lpm_gpio_setup &&
 				host->sdio_gpio_lpm) {
@@ -5050,13 +5008,8 @@ int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable)
 		if (!host->clks_on) {
 			msmsdcc_setup_clocks(host, true);
 			host->clks_on = 1;
-			if (!host->plat->sdiowakeup_irq) {
-				writel_relaxed(host->mci_irqenable,
-						host->base + MMCIMASK0);
-				mb();
-			}
 		}
-		#if 0
+
 		if (host->sdcc_irq_disabled) {
 			writel_relaxed(host->mci_irqenable,
 				       host->base + MMCIMASK0);
@@ -5064,7 +5017,6 @@ int msmsdcc_sdio_al_lpm(struct mmc_host *mmc, bool enable)
 			enable_irq(host->core_irqres->start);
 			host->sdcc_irq_disabled = 0;
 		}
-		#endif
 	}
 	spin_unlock_irqrestore(&host->lock, flags);
 	return 0;
@@ -5179,8 +5131,6 @@ static int msmsdcc_suspend(struct device *dev)
 				if (host->plat->sdiowakeup_irq) {
 					host->sdio_irq_disabled = 0;
 					msmsdcc_enable_irq_wake(host);
-					pr_info("%s: %s enable irq (%d)\n", mmc_hostname(mmc),
-						__func__, host->plat->sdiowakeup_irq);
 					enable_irq(host->plat->sdiowakeup_irq);
 				}
 			}
@@ -5255,8 +5205,6 @@ static int msmsdcc_resume(struct device *dev)
 				(mmc->pm_flags & MMC_PM_WAKE_SDIO_IRQ) &&
 				!host->sdio_irq_disabled) {
 				if (host->plat->sdiowakeup_irq) {
-					pr_info("%s: %s disable irq (%d)\n", mmc_hostname(mmc),
-						__func__, host->plat->sdiowakeup_irq);
 					disable_irq_nosync(
 						host->plat->sdiowakeup_irq);
 					msmsdcc_disable_irq_wake(host);
@@ -5443,7 +5391,6 @@ static int msmsdcc_pm_suspend(struct device *dev)
 	if (host->plat->is_sdio_al_client) {
 		mmc_claim_host(mmc);
 		rc = msmsdcc_sdio_al_lpm(mmc, true);
-		msmsdcc_enable_irq_wake(host);
 		mmc_release_host(mmc);
 	} else
 		rc = msmsdcc_suspend(dev);
@@ -5464,7 +5411,6 @@ static int msmsdcc_pm_resume(struct device *dev)
 	if (host->plat->is_sdio_al_client) {
 		if (wake_lock_active(&host->sdio_wlock))
 			wake_lock_timeout(&host->sdio_wlock, 1);
-		msmsdcc_disable_irq_wake(host);
 		wake_unlock(&host->sdio_suspend_wlock);
 	} else
 		msmsdcc_resume(dev);

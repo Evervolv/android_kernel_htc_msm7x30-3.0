@@ -495,7 +495,6 @@ void device_cb(u32 evt_id, union auddev_evt_data *evt, void *private)
 
 	if (!(evt_id == AUDDEV_EVT_DEV_RDY))
 		goto done;
-
 	audcal_info = evt->audcal_info;
 	mutex_lock(&acdb_data.acdb_mutex);
 	if (acdb_data.acdb_state & CAL_DATA_READY) {
@@ -674,9 +673,26 @@ done:
 	return result;
 }
 
+int get_lpa_session(void);
+
 s32 acdb_calibrate_audpp(void)
 {
 	s32	result = 0;
+
+	s32	ret = 0;
+	static s32 apply_copp4 = 0, copp4_applied = 0;
+	s32 dev_id = 0;
+
+	ret = get_lpa_session();
+	if (ret && !apply_copp4) {
+		pr_aud_info("lpa is enabled sessions = %x\n", acdb_data.device_info->sessions);
+		apply_copp4 = 1;
+		copp4_applied = 0;
+		dev_id = acdb_data.device_info->dev_id;
+		acdb_data.device_info->dev_id = 4;
+		acdb_calibrate_audpp();
+		acdb_data.device_info->dev_id = dev_id;
+	}
 
 	result = acdb_fill_audpp_iir();
 	if (!IS_ERR_VALUE(result)) {
@@ -687,8 +703,8 @@ s32 acdb_calibrate_audpp(void)
 		pr_aud_err("ACDB=> Failed to send IIR data to postproc\n");
 		result = -EINVAL;
 		goto done;
-		} else
-			MM_DBG("AUDPP is calibrated with IIR parameters"
+	} else
+		pr_aud_info("AUDPP is calibrated with IIR parameters"
 					" for COPP ID %d\n",
 						acdb_data.device_info->dev_id);
 	}
@@ -698,14 +714,19 @@ s32 acdb_calibrate_audpp(void)
 					acdb_data.pp_mbadrc->enable,
 					acdb_data.pp_mbadrc, COPP);
 	if (result) {
-			pr_aud_err("ACDB=> Failed to send MBADRC data to"
+		pr_aud_err("ACDB=> Failed to send MBADRC data to"
 					" postproc\n");
 		result = -EINVAL;
 		goto done;
-		} else
-			MM_DBG("AUDPP is calibrated with MBADRC parameters"
+	} else
+		pr_aud_info("AUDPP is calibrated with MBADRC parameters"
 					" for COPP ID %d\n",
 					acdb_data.device_info->dev_id);
+	}
+
+	if (apply_copp4) {
+		copp4_applied = 1;
+		apply_copp4 = 0;
 	}
 done:
 	return result;

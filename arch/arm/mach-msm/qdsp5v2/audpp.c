@@ -495,7 +495,7 @@ int audpp_set_volume_and_pan(unsigned id, unsigned volume, int pan,
 			return -EINVAL;
 		}
 	} else {
-		if (id > 3) {
+		if (id > 4) {
 			pr_aud_err("Wrong COPP decoder id: %d\n", id);
 			return -EINVAL;
 		}
@@ -528,7 +528,7 @@ int audpp_dsp_set_mbadrc(unsigned id, unsigned enable,
 			return -EINVAL;
 		}
 	} else {
-		if (id > 3) {
+		if (id > 4) {
 			pr_aud_err("Wrong COPP decoder id: %d\n", id);
 			return -EINVAL;
 		}
@@ -564,7 +564,7 @@ int audpp_dsp_set_qconcert_plus(unsigned id, unsigned enable,
 			return -EINVAL;
 		}
 	} else {
-		if (id > 3) {
+		if (id > 4) {
 			pr_aud_err("Wrong COPP decoder id: %d\n", id);
 			return -EINVAL;
 		}
@@ -601,7 +601,7 @@ int audpp_dsp_set_rx_iir(unsigned id, unsigned enable,
 			return -EINVAL;
 		}
 	} else {
-		if (id > 3) {
+		if (id > 4) {
 			pr_aud_err("Wrong COPP decoder id: %d\n", id);
 			return -EINVAL;
 		}
@@ -640,7 +640,7 @@ int audpp_dsp_set_eq(unsigned id, unsigned enable,
 			return -EINVAL;
 		}
 	} else {
-		if (id > 3) {
+		if (id > 4) {
 			pr_aud_err("Wrong COPP decoder id: %d\n", id);
 			return -EINVAL;
 		}
@@ -678,7 +678,7 @@ int audpp_dsp_set_vol_pan(unsigned id,
 			return -EINVAL;
 		}
 	} else {
-		if (id > AUDPP_MAX_COPP_DEVICES) {
+		if (id > 4/*AUDPP_MAX_COPP_DEVICES*/) {
 			pr_aud_err("Wrong COPP decoder id: %d\n", id);
 			return -EINVAL;
 		}

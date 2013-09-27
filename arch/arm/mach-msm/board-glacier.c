@@ -376,7 +376,8 @@ static struct platform_device htc_headset_microp = {
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
 	.hpin_gpio	= PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
-	.hpin_irq	= 0,
+	.hpin_irq	= MSM_GPIO_TO_INT(
+PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
 };
 
 static struct platform_device htc_headset_pmic = {

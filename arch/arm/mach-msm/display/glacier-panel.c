@@ -24,10 +24,11 @@
 #include <linux/err.h>
 #include <linux/gpio.h>
 
+#include <mach/msm_panel.h>
 #include <asm/io.h>
 #include <asm/mach-types.h>
 #include <mach/msm_fb-7x30.h>
-#include <mach/msm_iomap-7x30.h>
+#include <mach/msm_iomap.h>
 #include <mach/vreg.h>
 #include <mach/panel_id.h>
 
@@ -35,27 +36,15 @@
 #include "../devices.h"
 #include "../proc_comm.h"
 
-#if 1
-#define B(s...) printk(s)
-#else
-#define B(s...) do {} while(0)
-#endif
-
 struct vreg {
         const char *name;
         unsigned id;
 };
 
-struct vreg *V_LCMIO_1V8;
-struct vreg *V_LCMIO_2V8;
+struct vreg *V_LCMIO_1V8, *V_LCMIO_2V8;
 struct vreg *OJ_2V85;
 
 static struct clk *axi_clk;
-
-#define PWM_USER_DEF	 		143
-#define PWM_USER_MIN			30
-#define PWM_USER_DIM			20
-#define PWM_USER_MAX			255
 
 #define PWM_SHARP_DEF			103
 #define PWM_SHARP_MIN			11
@@ -72,11 +61,11 @@ static struct cabc_t {
 	struct msm_mddi_client_data *client_data;
 	struct mutex lock;
 	unsigned long status;
-	int last_shrink_br;
 } cabc;
 
 enum {
 	GATE_ON = 1 << 0,
+	CABC_STATE,
 };
 
 enum led_brightness brightness_value = DEFAULT_BRIGHTNESS;
@@ -84,24 +73,32 @@ enum led_brightness brightness_value = DEFAULT_BRIGHTNESS;
 /* use one flag to have better backlight on/off performance */
 static int glacier_set_dim = 1;
 
-static int glacier_shrink_pwm(int brightness, int user_def,
-		int user_min, int user_max, int panel_def,
-		int panel_min, int panel_max)
+static int glacier_shrink_pwm(int brightness)
 {
-	if (brightness < user_min) {
+	int panel_min = 0, panel_max = 0, panel_def = 0;
+
+	if(panel_type == PANEL_SHARP) {
+		panel_min = 11;
+		panel_max = 218;
+		panel_def = 103;
+	} else {
+		panel_min = 13;
+		panel_max = 255;
+		panel_def = 120;
+	}
+
+	if (brightness < 30) {
 		return panel_min;
 	}
 
-	if (brightness > user_def) {
+	if (brightness > 143) {
 		brightness = (panel_max - panel_def) *
-			(brightness - user_def) /
-			(user_max - user_def) +
-			panel_def;
+			(brightness - 143) /
+			112 + panel_def;
 	} else {
-			brightness = (panel_def - panel_min) *
-			(brightness - user_min) /
-			(user_def - user_min) +
-			panel_min;
+		brightness = (panel_def - panel_min) *
+			(brightness - 30) /
+			113 + panel_min;
 	}
 
         return brightness;
@@ -116,24 +113,12 @@ static void glacier_set_brightness(struct led_classdev *led_cdev,
 	if (test_bit(GATE_ON, &cabc.status) == 0)
 		return;
 
-	if(panel_type == PANEL_SONY)
-		shrink_br = glacier_shrink_pwm(val, PWM_USER_DEF,
-				PWM_USER_MIN, PWM_USER_MAX, PWM_SONY_DEF,
-				PWM_SONY_MIN, PWM_SONY_MAX);
-	else
-		shrink_br = glacier_shrink_pwm(val, PWM_USER_DEF,
-				PWM_USER_MIN, PWM_USER_MAX, PWM_SHARP_DEF,
-				PWM_SHARP_MIN, PWM_SHARP_MAX);
-
 	if (!client) {
 		pr_info("null mddi client");
 		return;
 	}
 
-	if (cabc.last_shrink_br == shrink_br) {
-		pr_info("[BKL] identical shrink_br");
-		return;
-	}
+	shrink_br = glacier_shrink_pwm(val);
 
 	mutex_lock(&cabc.lock);
 
@@ -142,11 +127,10 @@ static void glacier_set_brightness(struct led_classdev *led_cdev,
 		/* we dont need set dim again */
 		glacier_set_dim = 0;
 	}
+
 	client->remote_write(client, 0x00, 0x5500);
 	client->remote_write(client, shrink_br, 0x5100);
 
-	/* Update the last brightness */
-	cabc.last_shrink_br = shrink_br;
 	brightness_value = val;
 	mutex_unlock(&cabc.lock);
 
@@ -162,11 +146,12 @@ glacier_get_brightness(struct led_classdev *led_cdev)
 static void glacier_backlight_switch(int on)
 {
 	enum led_brightness val;
-	val = cabc.lcd_backlight.brightness;
 
 	if (on) {
 		printk(KERN_DEBUG "turn on backlight\n");
 		set_bit(GATE_ON, &cabc.status);
+		val = cabc.lcd_backlight.brightness;
+
 		/* LED core uses get_brightness for default value
 		 * If the physical layer is not ready, we should
 		 * not count on it */
@@ -177,19 +162,82 @@ static void glacier_backlight_switch(int on)
 		glacier_set_dim = 1;
 	} else {
 		clear_bit(GATE_ON, &cabc.status);
-		if (val != 0)
-			glacier_set_brightness(&cabc.lcd_backlight, 0);
-		cabc.last_shrink_br = 0;
+		glacier_set_brightness(&cabc.lcd_backlight, 0);
 	}
 }
+
+static int glacier_cabc_switch(int on)
+{
+	struct msm_mddi_client_data *client = cabc.client_data;
+
+	if (test_bit(CABC_STATE, &cabc.status) == on)
+               return 1;
+
+	if (on) {
+		printk(KERN_DEBUG "turn on CABC\n");
+		set_bit(CABC_STATE, &cabc.status);
+		mutex_lock(&cabc.lock);
+		client->remote_write(client, 0x01, 0x5500);
+		client->remote_write(client, 0x2C, 0x5300);
+		mutex_unlock(&cabc.lock);
+	} else {
+		printk(KERN_DEBUG "turn off CABC\n");
+		clear_bit(CABC_STATE, &cabc.status);
+		mutex_lock(&cabc.lock);
+		client->remote_write(client, 0x00, 0x5500);
+		client->remote_write(client, 0x2C, 0x5300);
+		mutex_unlock(&cabc.lock);
+	}
+
+	return 1;
+}
+
+static ssize_t
+auto_backlight_show(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t
+auto_backlight_store(struct device *dev, struct device_attribute *attr,
+               const char *buf, size_t count);
+#define CABC_ATTR(name) __ATTR(name, 0644, auto_backlight_show, auto_backlight_store)
+
+static struct device_attribute auto_attr = CABC_ATTR(auto);
+static ssize_t
+auto_backlight_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i = 0;
+
+	i += scnprintf(buf + i, PAGE_SIZE - 1, "%d\n",
+				test_bit(CABC_STATE, &cabc.status));
+	return i;
+}
+
+static ssize_t
+auto_backlight_store(struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	int rc;
+	unsigned long res;
+
+	rc = strict_strtoul(buf, 10, &res);
+	if (rc) {
+		printk(KERN_ERR "invalid parameter, %s %d\n", buf, rc);
+		count = -EINVAL;
+		goto err_out;
+	}
+
+	if (glacier_cabc_switch(!!res))
+		count = -EIO;
+
+err_out:
+	return count;
+}
+
 
 static int glacier_backlight_probe(struct platform_device *pdev)
 {
 	int err = -EIO;
-	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
 
+	printk(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
 	mutex_init(&cabc.lock);
-	cabc.last_shrink_br = 0;
 	cabc.client_data = pdev->dev.platform_data;
 	cabc.lcd_backlight.name = "lcd-backlight";
 	cabc.lcd_backlight.brightness_set = glacier_set_brightness;
@@ -198,8 +246,14 @@ static int glacier_backlight_probe(struct platform_device *pdev)
 	if (err)
 		goto err_register_lcd_bl;
 
+	err = device_create_file(cabc.lcd_backlight.dev, &auto_attr);
+	if (err)
+		goto err_out;
+
 	return 0;
 
+err_out:
+	device_remove_file(&pdev->dev, &auto_attr);
 err_register_lcd_bl:
 	led_classdev_unregister(&cabc.lcd_backlight);
 	return err;
@@ -518,14 +572,15 @@ static struct nov_regs sony_init_seq[] = {
 	{0x0480, 0x0063},
 };
 
+static int mddi_lcd_on = 1;
 
 static int
 glacier_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 		     struct msm_mddi_client_data *client_data)
 {
-	int i = 0, array_size;
+	int i = 0, array_size = 0;
 	unsigned reg, val;
-	struct nov_regs *init_seq;
+	struct nov_regs *init_seq = NULL;
 
 	if (panel_type == PANEL_SONY) {
 		init_seq = sony_init_seq;
@@ -556,7 +611,7 @@ static int
 glacier_mddi_uninit(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
+	printk(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -564,7 +619,7 @@ static int
 glacier_panel_blank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
+	printk(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
 	client_data->auto_hibernate(client_data, 0);
 
 	client_data->remote_write(client_data, 0, 0x2800);
@@ -573,6 +628,7 @@ glacier_panel_blank(struct msm_mddi_bridge_platform_data *bridge_data,
 	client_data->remote_write(client_data, 0, 0x1000);
 
 	client_data->auto_hibernate(client_data, 1);
+	mddi_lcd_on = 0;
 	return 0;
 }
 
@@ -580,7 +636,7 @@ static int
 glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s +\n", __func__);
+	printk(KERN_DEBUG "%s +\n", __func__);
 	client_data->auto_hibernate(client_data, 0);
 
 	/* HTC, Add 50 ms delay for stability of driver IC at high temperature */
@@ -595,6 +651,7 @@ glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 	glacier_backlight_switch(LED_FULL);
 
 	client_data->auto_hibernate(client_data, 1);
+	mddi_lcd_on = 1;
 	return 0;
 }
 
@@ -638,13 +695,14 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 		vreg_enable(OJ_2V85);
 		vreg_enable(V_LCMIO_2V8);
 		vreg_enable(V_LCMIO_1V8);
-		gpio_set_value(GLACIER_LCD_RSTz, 1);
-		hr_msleep(1);
-		gpio_set_value(GLACIER_LCD_RSTz, 0);
-		hr_msleep(1);
-		gpio_set_value(GLACIER_LCD_RSTz, 1);
-		hr_msleep(15);
 
+                if (!mddi_lcd_on) {
+			gpio_set_value(GLACIER_LCD_RSTz, 1);
+			hr_msleep(1);
+			gpio_set_value(GLACIER_LCD_RSTz, 0);
+			hr_msleep(1);
+			gpio_set_value(GLACIER_LCD_RSTz, 1);
+		}
 	} else {
 		gpio_set_value(GLACIER_LCD_RSTz, 0);
 		hr_msleep(10);
@@ -736,7 +794,7 @@ int __init glacier_init_panel(void)
 {
 	int rc;
 
-	B(KERN_INFO "%s: enter. panel type %d\n", __func__, panel_type);
+	printk(KERN_INFO "%s: enter. panel type %d\n", __func__, panel_type);
 
 	/* turn on OJ_2V85 for OJ. Note: must before V_LCMIO_1V8 */
 	OJ_2V85 = vreg_get(NULL, "gp9");
@@ -762,6 +820,7 @@ int __init glacier_init_panel(void)
 		msm_device_mdp.dev.platform_data = &mdp_pdata_sharp;
 	else
 		msm_device_mdp.dev.platform_data = &mdp_pdata_common;
+
 	rc = platform_device_register(&msm_device_mdp);
 	if (rc)
 		return rc;

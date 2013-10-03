@@ -96,6 +96,7 @@
 #endif
 #include <mach/board_htc.h>
 #include <mach/cable_detect.h>
+#include <linux/tpa2051d3.h>
 #include "devices.h"
 #include "timer.h"
 #include "proc_comm.h"
@@ -1261,6 +1262,17 @@ static void __init glacier_init_marimba(void)
 	}
 }
 
+static struct tpa2051d3_platform_data tpa2051d3_platform_data = {
+	//.gpio_tpa2051_spk_en = GLACIER_AUD_SPK_SD,
+};
+
+static struct i2c_board_info tpa2051_devices[] = {
+	{
+		I2C_BOARD_INFO(TPA2051D3_I2C_NAME, 0xE0 >> 1),
+		.platform_data = &tpa2051d3_platform_data,
+	},
+};
+
 #ifdef CONFIG_MSM7KV2_AUDIO
 static struct resource msm_aictl_resources[] = {
 	{
@@ -1586,6 +1598,19 @@ static struct i2c_board_info msm_marimba_board_info[] = {
 		I2C_BOARD_INFO("marimba", 0xc),
 		.platform_data = &marimba_pdata,
 	}
+};
+
+static struct msm_handset_platform_data hs_platform_data = {
+	.hs_name = "7k_handset",
+	.pwr_key_delay_ms = 500, /* 0 will disable end key */
+};
+
+static struct platform_device hs_device = {
+	.name   = "msm-handset",
+	.id     = -1,
+	.dev    = {
+		.platform_data = &hs_platform_data,
+	},
 };
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
@@ -3008,6 +3033,7 @@ static struct platform_device *devices[] __initdata = {
         &android_pmem_adsp_device,
         &msm_device_i2c,
         &msm_device_i2c_2,
+	&hs_device,
 #ifdef CONFIG_INPUT_CAPELLA_CM3602
         &capella_cm3602,
 #endif
@@ -3154,6 +3180,9 @@ static void __init glacier_init(void)
 
 	i2c_register_board_info(2, msm_marimba_board_info,
 			ARRAY_SIZE(msm_marimba_board_info));
+
+	i2c_register_board_info(0, tpa2051_devices,
+			ARRAY_SIZE(tpa2051_devices));
 
 	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
 				ARRAY_SIZE(msm_camera_boardinfo));

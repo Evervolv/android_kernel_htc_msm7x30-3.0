@@ -33,40 +33,27 @@
 
 static struct mutex bt_sco_lock;
 
-static void config_gpio_table(uint32_t *table, int len)
-{
-	int n, rc;
-	for (n = 0; n < len; n++) {
-		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
-		if (rc) {
-			pr_err("[CAM] %s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, table[n], rc);
-			break;
-		}
-	}
-}
-
 static struct q5v2_hw_info_percentage q5v2_audio_hw[Q5V2_HW_COUNT] = {
 	[Q5V2_HW_HANDSET] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-1600, -1100, -600, -200, 200, 500, 0, 0, 0, 0},
+			{-1600, -1100, -600, -200, 200, 400, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-1600, -1100, -600, -250, 250, 500, 0, 0, 0, 0},
+			{-1600, -1100, -600, -200, 200, 400, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_HEADSET] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-1100, -700, -300, 100, 625, 1125, 0, 0, 0, 0},
+			{-1100, -700, -300, 100, 500, 900, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-1100, -700, -300, 100, 625, 1125, 0, 0, 0, 0},
+			{-1100, -700, -300, 100, 500, 900, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_SPEAKER] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-400, -100, 200, 625, 1000, 1375, 0, 0, 0, 0},
+			{-400, -100, 200, 500, 800, 1100, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-400, -100, 200, 625, 1000, 1375, 0, 0, 0, 0},
+			{-400, -100, 200, 500, 800, 1100, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_BT_SCO] = {
 		.max_step = 6,
@@ -92,24 +79,24 @@ static struct q5v2_hw_info_percentage q5v2_audio_hw[Q5V2_HW_COUNT] = {
 	[Q5V2_HW_USB_HS] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
+			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
+			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
 	},
 	[Q5V2_HW_HAC] = {
 		.max_step = 6,
 		.gain[VOC_NB_INDEX] =
-			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
+			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
 		.gain[VOC_WB_INDEX] =
-			{-500, -200, 100, 500, 875, 1250, 0, 0, 0, 0},
+			{-500, -200, 100, 400, 700, 1000, 0, 0, 0, 0},
 	},
 };
 
 static unsigned aux_pcm_gpio_on[] = {
-	GPIO_CFG(GLACIER_GPIO_BT_PCM_OUT, 1, GPIO_CFG_OUTPUT,	GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_OUT, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	GPIO_CFG(GLACIER_GPIO_BT_PCM_IN, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 1, GPIO_CFG_OUTPUT,	GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
 static unsigned aux_pcm_gpio_off[] = {
@@ -118,6 +105,19 @@ static unsigned aux_pcm_gpio_off[] = {
 	GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 };
+
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n, rc;
+	for (n = 0; n < len; n++) {
+		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+				__func__, table[n], rc);
+			break;
+		}
+	}
+}
 
 void glacier_snddev_poweramp_on(int en)
 {
@@ -128,9 +128,8 @@ void glacier_snddev_poweramp_on(int en)
 
 void glacier_snddev_hsed_pamp_on(int en)
 {
-	int ret;
 	struct vreg *vreg_ncp;
-
+	int ret;
 	vreg_ncp = vreg_get(NULL, "ncp");
 	if (IS_ERR(vreg_ncp)) {
 		pr_aud_err("%s: vreg_get(%s) failed (%ld)\n",
@@ -139,11 +138,15 @@ void glacier_snddev_hsed_pamp_on(int en)
 	}
 
 	if (en) {
-		gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), 1);
 		mdelay(60);
+		gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), 1);
 		ret = vreg_enable(vreg_ncp);
+		if (ret)
+			pr_aud_err("%s: vreg_enable failed (%d)\n", __func__, ret);
 	} else {
 		ret = vreg_disable(vreg_ncp);
+		if (ret)
+			pr_aud_err("%s: vreg_disable failed (%d)\n", __func__, ret);
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_EN), 0);
 	}
 }
@@ -226,9 +229,11 @@ int glacier_support_audience(void)
 {
 	unsigned int engineerID = glacier_get_engineerid();
 	pr_aud_info("%s: engineerid: %x", __func__, engineerID);
-	/* Bit2:
+	/*
+	 * Bit2:
 	 * 0: with audience.
-	 * 1: without audience */
+	 * 1: without audience
+	 */
 	return engineerID & 0x4 ? 0 : 1;
 }
 
@@ -294,7 +299,7 @@ void __init glacier_audio_init(void)
 	};
 
 	mutex_init(&bt_sco_lock);
-#ifdef CONFIG_MSM7KV2_AUDIO
+#if defined(CONFIG_MSM7KV2_AUDIO)
 	htc_7x30_register_analog_ops(&ops);
 	htc_7x30_register_ecodec_ops(&eops);
 	htc_7x30_register_voice_ops(&vops);

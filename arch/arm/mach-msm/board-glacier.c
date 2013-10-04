@@ -252,25 +252,12 @@ static struct attribute_group glacier_properties_attr_group = {
 	.attrs = glacier_properties_attrs,
 };
 
-static uint32_t proximity_on_gpio_table[] = {
+static uint32_t proximity_gpio_table[] = {
 	PCOM_GPIO_CFG(GLACIER_GPIO_PROXIMITY_INT_N,
-		0, GPIO_INPUT, GPIO_NO_PULL, 0), /* PS_VOUT */
-};
-
-static uint32_t proximity_off_gpio_table[] = {
+		0, GPIO_INPUT, GPIO_NO_PULL, 0), /* ON */
 	PCOM_GPIO_CFG(GLACIER_GPIO_PROXIMITY_INT_N,
-		0, GPIO_INPUT, GPIO_PULL_DOWN, 0) /* PS_VOUT */
+		0, GPIO_INPUT, GPIO_PULL_DOWN, 0) /* OFF */
 };
-
-void config_glacier_proximity_gpios(int on)
-{
-	if (on)
-		config_gpio_table(proximity_on_gpio_table,
-			ARRAY_SIZE(proximity_on_gpio_table));
-	else
-		config_gpio_table(proximity_off_gpio_table,
-			ARRAY_SIZE(proximity_off_gpio_table));
-}
 
 static int __capella_cm3602_power(int on)
 {
@@ -286,7 +273,7 @@ static int __capella_cm3602_power(int on)
 		__func__, (on) ? "on" : "off");
 
 	if (on) {
-		config_glacier_proximity_gpios(1);
+		gpio_tlmm_config(proximity_gpio_table[0], GPIO_CFG_ENABLE);
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_PS_SHDN), 1);
 		rc = vreg_enable(vreg);
 		if (rc < 0)
@@ -296,7 +283,7 @@ static int __capella_cm3602_power(int on)
 		if (rc < 0)
 			printk(KERN_ERR "%s: vreg disable failed\n", __func__);
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_PS_SHDN), 0);
-		config_glacier_proximity_gpios(0);
+		gpio_tlmm_config(proximity_gpio_table[1], GPIO_CFG_ENABLE);
 	}
 
 	return rc;

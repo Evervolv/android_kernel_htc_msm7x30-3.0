@@ -243,7 +243,7 @@ static struct mmc_platform_data speedy_wifi_data = {
 	.nonremovable   = 0,
 };
 
-int speedy_wifi_set_carddetect(int val)
+int msm7x30_wifi_set_carddetect(int val)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, val);
 	speedy_wifi_cd = val;
@@ -253,7 +253,7 @@ int speedy_wifi_set_carddetect(int val)
 		printk(KERN_WARNING "%s: Nobody to notify\n", __func__);
 	return 0;
 }
-EXPORT_SYMBOL(speedy_wifi_set_carddetect);
+EXPORT_SYMBOL(msm7x30_wifi_set_carddetect);
 
 #if 0
 static struct pm8058_gpio pmic_gpio_sleep_clk_output = {
@@ -335,7 +335,7 @@ int speedy_wifi_bt_sleep_clk_ctl(int on, int id)
 EXPORT_SYMBOL(speedy_wifi_bt_sleep_clk_ctl);
 #endif
 
-int speedy_wifi_power(int on)
+int msm7x30_wifi_power(int on)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, on);
 
@@ -352,9 +352,9 @@ int speedy_wifi_power(int on)
 	mdelay(120);
 	return 0;
 }
-EXPORT_SYMBOL(speedy_wifi_power);
+EXPORT_SYMBOL(msm7x30_wifi_power);
 
-int speedy_wifi_reset(int on)
+int msm7x30_wifi_reset(int on)
 {
 	printk(KERN_INFO "%s: do nothing\n", __func__);
 	return 0;

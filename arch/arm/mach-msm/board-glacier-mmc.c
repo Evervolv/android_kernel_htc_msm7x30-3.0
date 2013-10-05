@@ -107,19 +107,19 @@ static unsigned int glacier_wifi_status(struct device *dev)
 
 static unsigned int glacier_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static struct mmc_platform_data glacier_wifi_data = {
-		.ocr_mask               = MMC_VDD_28_29,
-		.status                 = glacier_wifi_status,
-		.register_status_notify = glacier_wifi_status_register,
-		.embedded_sdio          = &glacier_wifi_emb_data,
-		.slot_type	= &glacier_wifislot_type,
-		.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-		.msmsdcc_fmin   = 144000,
-		.msmsdcc_fmid   = 24576000,
-                .msmsdcc_fmax	= 50000000,
-		.nonremovable   = 0,
+	.ocr_mask               = MMC_VDD_28_29,
+	.status                 = glacier_wifi_status,
+	.register_status_notify = glacier_wifi_status_register,
+	.embedded_sdio          = &glacier_wifi_emb_data,
+	.slot_type	= &glacier_wifislot_type,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+	.msmsdcc_fmin   = 144000,
+	.msmsdcc_fmid   = 24576000,
+	.msmsdcc_fmax	= 50000000,
+	.nonremovable   = 0,
 };
 
-int glacier_wifi_set_carddetect(int val)
+int msm7x30_wifi_set_carddetect(int val)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, val);
 	glacier_wifi_cd = val;
@@ -129,18 +129,18 @@ int glacier_wifi_set_carddetect(int val)
 		printk(KERN_WARNING "%s: Nobody to notify\n", __func__);
 	return 0;
 }
-EXPORT_SYMBOL(glacier_wifi_set_carddetect);
+EXPORT_SYMBOL(msm7x30_wifi_set_carddetect);
 
-int glacier_wifi_power(int on)
+int msm7x30_wifi_power(int on)
 {
 	printk(KERN_INFO "[WLAN]%s: %d\n", __func__, on);
 
 	if (on) {
-	   config_gpio_table(wifi_on_gpio_table,
-				ARRAY_SIZE(wifi_on_gpio_table));
+		config_gpio_table(wifi_on_gpio_table,
+			ARRAY_SIZE(wifi_on_gpio_table));
 	} else {
-      config_gpio_table(wifi_off_gpio_table,
-				ARRAY_SIZE(wifi_off_gpio_table));
+		config_gpio_table(wifi_off_gpio_table,
+			ARRAY_SIZE(wifi_off_gpio_table));
 	}
 
 	/* glacier_wifi_bt_sleep_clk_ctl(on, ID_WIFI); */
@@ -148,9 +148,9 @@ int glacier_wifi_power(int on)
 	mdelay(120);
 	return 0;
 }
-EXPORT_SYMBOL(glacier_wifi_power);
+EXPORT_SYMBOL(msm7x30_wifi_power);
 
-int glacier_wifi_reset(int on)
+int msm7x30_wifi_reset(int on)
 {
 	printk(KERN_INFO "%s: do nothing\n", __func__);
 	return 0;

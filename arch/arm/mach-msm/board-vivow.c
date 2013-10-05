@@ -4546,7 +4546,7 @@ static void __init vivow_init(void)
 	if (rc != 0)
 		pr_crit("%s: Unable to initialize MMC\n", __func__);
 
-	vivow_wifi_init();
+	msm7x30_wifi_init();
 
 	msm7x30_init_mmc();
 	msm_qsd_spi_init();

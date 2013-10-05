@@ -4457,7 +4457,7 @@ static void __init mecha_init(void)
 
 	mecha_init_keypad();
 	mecha_init_panel();
-	mecha_wifi_init();
+	msm7x30_wifi_init();
 
 	if (system_rev <= 1) {
 			printk(KERN_INFO"add device_pm8058_led\n");

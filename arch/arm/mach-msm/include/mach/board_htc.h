@@ -117,4 +117,8 @@ unsigned long get_kernel_flag(void);
 unsigned int get_radio_flag(void);
 char *get_model_id(void);
 unsigned get_engineerid(void);
+
+#ifdef CONFIG_ARCH_MSM7X30
+int __init msm7x30_wifi_init(void);
+#endif
 #endif

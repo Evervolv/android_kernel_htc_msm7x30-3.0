@@ -108,7 +108,7 @@ static struct mmc_platform_data mecha_wifi_data = {
 	.nonremovable   = 0,
 };
 
-int mecha_wifi_set_carddetect(int val)
+int msm7x30_wifi_set_carddetect(int val)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, val);
 	mecha_wifi_cd = val;
@@ -118,9 +118,9 @@ int mecha_wifi_set_carddetect(int val)
 		printk(KERN_WARNING "%s: Nobody to notify\n", __func__);
 	return 0;
 }
-EXPORT_SYMBOL(mecha_wifi_set_carddetect);
+EXPORT_SYMBOL(msm7x30_wifi_set_carddetect);
 
-int mecha_wifi_power(int on)
+int msm7x30_wifi_power(int on)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, on);
 
@@ -137,9 +137,9 @@ int mecha_wifi_power(int on)
 	mdelay(120);
 	return 0;
 }
-EXPORT_SYMBOL(mecha_wifi_power);
+EXPORT_SYMBOL(msm7x30_wifi_power);
 
-int mecha_wifi_reset(int on)
+int msm7x30_wifi_reset(int on)
 {
 	printk(KERN_INFO "%s: do nothing\n", __func__);
 	return 0;

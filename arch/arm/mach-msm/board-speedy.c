@@ -3002,7 +3002,7 @@ static void __init speedy_init(void)
 	speedy_te_gpio_config();
 #endif
 	speedy_init_panel(system_rev);
-	speedy_wifi_init();
+	msm7x30_wifi_init();
 	msm_init_pmic_vibrator(3000);
 }
 

@@ -103,14 +103,14 @@ static struct mmc_platform_data vivow_wifi_data = {
 	.register_status_notify	= vivow_wifi_status_register,
 	.embedded_sdio		= &vivow_wifi_emb_data,
 	.slot_type          = &vivow_wifislot_type,
-		.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-		.msmsdcc_fmin   = 144000,
-		.msmsdcc_fmid   = 24576000,
-		.msmsdcc_fmax   = 49152000,
-		.nonremovable   = 0,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+	.msmsdcc_fmin   = 144000,
+	.msmsdcc_fmid   = 24576000,
+	.msmsdcc_fmax   = 49152000,
+	.nonremovable   = 0,
 };
 
-int vivow_wifi_set_carddetect(int val)
+int msm7x30_wifi_set_carddetect(int val)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, val);
 	vivow_wifi_cd = val;
@@ -120,9 +120,9 @@ int vivow_wifi_set_carddetect(int val)
 		printk(KERN_WARNING "%s: Nobody to notify\n", __func__);
 	return 0;
 }
-EXPORT_SYMBOL(vivow_wifi_set_carddetect);
+EXPORT_SYMBOL(msm7x30_wifi_set_carddetect);
 
-int vivow_wifi_power(int on)
+int msm7x30_wifi_power(int on)
 {
 	printk(KERN_INFO "%s: %d\n", __func__, on);
 
@@ -139,9 +139,9 @@ int vivow_wifi_power(int on)
 	mdelay(120);
 	return 0;
 }
-EXPORT_SYMBOL(vivow_wifi_power);
+EXPORT_SYMBOL(msm7x30_wifi_power);
 
-int vivow_wifi_reset(int on)
+int msm7x30_wifi_reset(int on)
 {
 	printk(KERN_INFO "%s: do nothing\n", __func__);
 	return 0;

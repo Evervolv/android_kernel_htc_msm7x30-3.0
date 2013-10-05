@@ -3183,7 +3183,7 @@ static void __init glacier_init(void)
 	glacier_te_gpio_config();
 #endif
 	glacier_init_panel();
-	glacier_wifi_init();
+	msm7x30_wifi_init();
 }
 
 static unsigned pmem_sf_size = MSM_PMEM_SF_SIZE;

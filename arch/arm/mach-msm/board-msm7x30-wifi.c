@@ -1,4 +1,4 @@
-/* linux/arch/arm/mach-msm/board-mecha-wifi.c
+/* linux/arch/arm/mach-msm/board-msm7x30-wifi.c
 */
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -11,11 +11,11 @@
 #include <linux/skbuff.h>
 #include <linux/wlan_plat.h>
 
-#include "board-mecha.h"
+#define BOARD_GPIO_WIFI_IRQ	147
 
-int mecha_wifi_power(int on);
-int mecha_wifi_reset(int on);
-int mecha_wifi_set_carddetect(int on);
+int msm7x30_wifi_power(int on);
+int msm7x30_wifi_reset(int on);
+int msm7x30_wifi_set_carddetect(int on);
 
 #define PREALLOC_WLAN_NUMBER_OF_SECTIONS	4
 #define PREALLOC_WLAN_NUMBER_OF_BUFFERS		160
@@ -42,7 +42,7 @@ static wifi_mem_prealloc_t wifi_mem_array[PREALLOC_WLAN_NUMBER_OF_SECTIONS] = {
 	{ NULL, (WLAN_SECTION_SIZE_3 + PREALLOC_WLAN_SECTION_HEADER) }
 };
 
-static void *mecha_wifi_mem_prealloc(int section, unsigned long size)
+static void *msm7x30_wifi_mem_prealloc(int section, unsigned long size)
 {
 	if (section == PREALLOC_WLAN_NUMBER_OF_SECTIONS)
 		return wlan_static_skb;
@@ -53,7 +53,7 @@ static void *mecha_wifi_mem_prealloc(int section, unsigned long size)
 	return wifi_mem_array[section].mem_ptr;
 }
 
-int __init mecha_init_wifi_mem(void)
+int __init msm7x30_init_wifi_mem(void)
 {
 	int i;
 
@@ -72,35 +72,35 @@ int __init mecha_init_wifi_mem(void)
 	return 0;
 }
 
-static struct resource mecha_wifi_resources[] = {
+static struct resource msm7x30_wifi_resources[] = {
 	[0] = {
 		.name		= "bcm4329_wlan_irq",
-		.start		= MSM_GPIO_TO_INT(MECHA_GPIO_WIFI_IRQ),
-		.end		= MSM_GPIO_TO_INT(MECHA_GPIO_WIFI_IRQ),
+		.start		= MSM_GPIO_TO_INT(BOARD_GPIO_WIFI_IRQ),
+		.end		= MSM_GPIO_TO_INT(BOARD_GPIO_WIFI_IRQ),
 		.flags          = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
 	},
 };
 
-static struct wifi_platform_data mecha_wifi_control = {
-	.set_power      = mecha_wifi_power,
-	.set_reset      = mecha_wifi_reset,
-	.set_carddetect = mecha_wifi_set_carddetect,
-	.mem_prealloc   = mecha_wifi_mem_prealloc,
+static struct wifi_platform_data msm7x30_wifi_control = {
+	.set_power      = msm7x30_wifi_power,
+	.set_reset      = msm7x30_wifi_reset,
+	.set_carddetect = msm7x30_wifi_set_carddetect,
+	.mem_prealloc   = msm7x30_wifi_mem_prealloc,
 };
 
-static struct platform_device mecha_wifi_device = {
+static struct platform_device msm7x30_wifi_device = {
         .name           = "bcm4329_wlan",
         .id             = 1,
-        .num_resources  = ARRAY_SIZE(mecha_wifi_resources),
-        .resource       = mecha_wifi_resources,
+        .num_resources  = ARRAY_SIZE(msm7x30_wifi_resources),
+        .resource       = msm7x30_wifi_resources,
         .dev            = {
-                .platform_data = &mecha_wifi_control,
+                .platform_data = &msm7x30_wifi_control,
         },
 };
 
 extern unsigned char *get_wifi_nvs_ram(void);
 
-static unsigned mecha_wifi_update_nvs(char *str)
+static unsigned msm7x30_wifi_update_nvs(char *str)
 {
 #define NVS_LEN_OFFSET		0x0C
 #define NVS_DATA_OFFSET		0x40
@@ -117,26 +117,21 @@ static unsigned mecha_wifi_update_nvs(char *str)
 	if (ptr[NVS_DATA_OFFSET + len -1] == 0)
 		len -= 1;
 
-	if (ptr[NVS_DATA_OFFSET + len -1] != '\n') {
-		len += 1;
-		ptr[NVS_DATA_OFFSET + len -1] = '\n';
-	}
-
 	strcpy(ptr + NVS_DATA_OFFSET + len, str);
 	len += strlen(str);
 	memcpy(ptr + NVS_LEN_OFFSET, &len, sizeof(len));
 	return 0;
 }
 
-int __init mecha_wifi_init(void)
+int __init msm7x30_wifi_init(void)
 {
 	int ret;
 
 	printk(KERN_INFO "%s: start\n", __func__);
-	mecha_wifi_update_nvs("sd_oobonly=1\n");
-	mecha_wifi_update_nvs("btc_params80=0\n");
-	mecha_wifi_update_nvs("btc_params6=30\n");
-	mecha_init_wifi_mem();
-	ret = platform_device_register(&mecha_wifi_device);
+	msm7x30_wifi_update_nvs("sd_oobonly=1\n");
+	msm7x30_wifi_update_nvs("btc_params80=0\n");
+	msm7x30_wifi_update_nvs("btc_params6=30\n");
+	msm7x30_init_wifi_mem();
+	ret = platform_device_register(&msm7x30_wifi_device);
 	return ret;
 }

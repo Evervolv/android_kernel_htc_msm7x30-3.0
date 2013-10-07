@@ -22,7 +22,7 @@
 #include "pmic.h"
 #include "timed_output.h"
 #include <linux/debug_by_vibrator.h>
-
+#include <linux/wakelock.h>
 #include <mach/msm_rpcrouter.h>
 #define VIB_INFO_LOG(fmt, ...) \
 		printk(KERN_INFO "[VIB]" fmt, ##__VA_ARGS__)
@@ -44,29 +44,10 @@ static int vibe_state;
 static spinlock_t vibe_lock;
 static struct hrtimer vibe_timer;
 static int pmic_vibrator_level;
+struct wake_lock vib_wake_lock;
 
 
-#ifdef CONFIG_PM8XXX_RPC_VIBRATOR
-static void set_pmic_vibrator(int on)
-{
-	int rc;
-
-	rc = pmic_vib_mot_set_mode(PM_VIB_MOT_MODE__MANUAL);
-	if (rc) {
-		pr_err("%s: Vibrator set mode failed", __func__);
-		return;
-	}
-
-	if (on)
-		rc = pmic_vib_mot_set_volt(pmic_vibrator_level);
-	else
-		rc = pmic_vib_mot_set_volt(0);
-
-	if (rc)
-		pr_err("%s: Vibrator set voltage level failed", __func__);
-}
-#else
-
+#ifdef CONFIG_MSM_RPC_VIBRATOR
 static void set_pmic_vibrator(int on)
 {
 	static struct msm_rpc_endpoint *vib_endpoint;
@@ -102,20 +83,56 @@ static void set_pmic_vibrator(int on)
 		pr_info("[ATS][set_vibration][successful]\n");
 
 }
+#else
+static void set_pmic_vibrator_on(void)
+{
+	int rc;
+	uint32_t data1, data2;
+	VIB_INFO_LOG("%s: + \n", __func__);
+	data1 = 0x1;
+	data2 = 0x0;
+	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
+	if (rc)
+		VIB_ERR_LOG("%s: data1 0x%x, rc=%d\n", __func__, data1, rc);
+	VIB_INFO_LOG("%s: - \n", __func__);
+}
+static void set_pmic_vibrator_off(void){
+	int rc;
+	uint32_t data1, data2;
+	VIB_INFO_LOG("%s: + \n", __func__);
+	data1 = 0x0;
+	data2 = 0x0;
+	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
+	if (rc)
+		VIB_ERR_LOG("%s: data1 0x%x, rc=%d\n", __func__, data1, rc);
+	VIB_INFO_LOG("%s: - \n", __func__);
+}
 #endif
+
 static void update_vibrator(struct work_struct *work)
 {
+#ifdef CONFIG_MSM_RPC_VIBRATOR
 	set_pmic_vibrator(vibe_state);
+#endif
 }
 
 
 static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
+#ifdef CONFIG_MSM_RPC_VIBRATOR
 	unsigned long	flags;
-	hrtimer_cancel(&vibe_timer);
+
+retry:
 	spin_lock_irqsave(&vibe_lock, flags);
+	if (hrtimer_try_to_cancel(&vibe_timer) < 0) {
+		spin_unlock_irqrestore(&vibe_lock, flags);
+		cpu_relax();
+		goto retry;
+	}
+
 	VIB_INFO_LOG("vibrator_enable, %s(parent:%s): vibrates %d msec\n",
 				current->comm, current->parent->comm, value);
+
 	if (value == 0)
 		vibe_state = 0;
 	else {
@@ -127,6 +144,28 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	}
 	spin_unlock_irqrestore(&vibe_lock, flags);
 	schedule_work(&vibrator_work);
+#else
+	if (value != 0);
+retry:
+	if (hrtimer_try_to_cancel(&vibe_timer) < 0) {
+		cpu_relax();
+		goto retry;
+	}
+
+	VIB_INFO_LOG("vibrator_enable, %s(parent:%s): vibrates %d msec\n",
+				current->comm, current->parent->comm, value);
+
+	if (value == 0)
+		set_pmic_vibrator_off();
+	else {
+		value = (value > 15000 ? 15000 : value);
+		set_pmic_vibrator_on();
+		wake_lock_timeout(&vib_wake_lock, HZ * value / 1000);
+		hrtimer_start(&vibe_timer,
+			      ktime_set(value / 1000, (value % 1000) * 1000000),
+			      HRTIMER_MODE_REL);
+	}
+#endif
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)
@@ -142,8 +181,12 @@ static int vibrator_get_time(struct timed_output_dev *dev)
 static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 {
 	VIB_INFO_LOG("%s\n", __func__);
+#ifdef CONFIG_MSM_RPC_VIBRATOR
 	vibe_state = 0;
 	schedule_work(&vibrator_work);
+#else
+	set_pmic_vibrator_off();
+#endif
 	return HRTIMER_NORESTART;
 }
 
@@ -291,6 +334,7 @@ void __init msm_init_pmic_vibrator(int level)
 	INIT_WORK(&vibrator_work, update_vibrator);
 	spin_lock_init(&vibe_lock);
 	vibe_state = 0;
+	wake_lock_init(&vib_wake_lock, WAKE_LOCK_IDLE, "vib");
 	hrtimer_init(&vibe_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	vibe_timer.function = vibrator_timer_func;
 	pmic_vibrator_level = level;

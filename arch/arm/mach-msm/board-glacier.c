@@ -364,8 +364,7 @@ static struct platform_device htc_headset_microp = {
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
 	.hpin_gpio	= PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
-	.hpin_irq	= MSM_GPIO_TO_INT(
-PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
+	.hpin_irq	= 0,
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -384,35 +383,9 @@ static struct platform_device *headset_devices[] = {
 	/* Please put the headset detection driver on the last */
 };
 
-static struct headset_adc_config htc_headset_mgr_config[] = {
-	{
-		.type = HEADSET_MIC,
-		.adc_max = 54808,
-		.adc_min = 44587,
-	},
-	{
-		.type = HEADSET_METRICO, /* HEADSET_BEATS */
-		.adc_max = 44586,
-		.adc_min = 15951,
-	},
-	{
-		.type = HEADSET_NO_MIC, /* HEADSET_MIC */
-		.adc_max = 15950,
-		.adc_min = 1331,
-	},
-	{
-		.type = HEADSET_NO_MIC,
-		.adc_max = 1330,
-		.adc_min = 0,
-	},
-};
-
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
-	.driver_flag		= 0,
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
-	.headset_config_num	= ARRAY_SIZE(htc_headset_mgr_config),
-	.headset_config		= htc_headset_mgr_config,
 };
 
 static struct microp_function_config microp_functions[] = {
@@ -513,6 +486,7 @@ static struct akm8975_platform_data compass_platform_data = {
 };
 
 static struct tps65200_platform_data tps65200_data = {
+	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_GPIO_CHG_INT)),
 	.charger_check = 0,
 };
 

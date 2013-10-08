@@ -2431,22 +2431,6 @@ void config_glacier_usb_id_gpios(bool output)
 	}
 }
 
-static struct cable_detect_platform_data cable_detect_pdata = {
-	.detect_type 		= CABLE_TYPE_ID_PIN,
-	.usb_id_pin_gpio 	= GLACIER_GPIO_USB_ID_PIN,
-	.config_usb_id_gpios 	= config_glacier_usb_id_gpios,
-	.dock_detect		= 1,
-	.dock_pin_gpio		= GLACIER_GPIO_DOCK_PIN,
-};
-
-static struct platform_device cable_detect_device = {
-	.name	= "cable_detect",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &cable_detect_pdata,
-	},
-};
-
 static struct msm_gpio msm_i2c_gpios_hw[] = {
 	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
 	{ GPIO_CFG(71, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_sda" },
@@ -3074,7 +3058,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
-	&cable_detect_device,
 };
 
 static void __init glacier_init(void)

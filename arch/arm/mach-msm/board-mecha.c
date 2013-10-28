@@ -3206,7 +3206,6 @@ static struct platform_device *devices[] __initdata = {
 	
 	&wifi_bt_slp_clk,
 	&cable_detect_device,
-	&htc_drm,
 };
 
 static struct platform_device *debug_uart_device[] __initdata = {

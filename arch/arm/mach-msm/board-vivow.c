@@ -3375,7 +3375,6 @@ static struct platform_device *devices[] __initdata = {
 	&wifi_bt_fast_clk,
 */
 	&pm8058_leds,
-	&htc_drm,
 
 };
 

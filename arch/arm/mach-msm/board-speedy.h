@@ -37,16 +37,9 @@
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE    0x000F0000
 
-#define MSM_PMEM_ADSP_BASE	0x2C100000
 #define MSM_PMEM_ADSP_SIZE	0x01D00000
-
-#define PMEM_KERNEL_EBI1_BASE   0x2DE00000
 #define PMEM_KERNEL_EBI1_SIZE   0x00600000
-
-#define MSM_PMEM_SF_BASE	0x2E400000
 #define MSM_PMEM_SF_SIZE	0x01700000
-
-#define MSM_FB_BASE		0x2FB00000
 #define MSM_FB_SIZE		0x00500000
 
 /* GPIO definition */
@@ -155,6 +148,7 @@
 /*display*/
 extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
+extern unsigned long msm_fb_base;
 extern int panel_type;
 
 unsigned int speedy_get_engineerid(void);

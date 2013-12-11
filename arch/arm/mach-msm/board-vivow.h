@@ -33,19 +33,10 @@
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE	0x00100000
 
-#define MSM_PMEM_ADSP_BASE  	0x29A00000
 #define MSM_PMEM_ADSP_SIZE	0x03A00000	/* 64MB -> 55MB -> 58MB */
-
-#define PMEM_KERNEL_EBI1_BASE   0x2D400000
 #define PMEM_KERNEL_EBI1_SIZE   0x00900000	/* 7MB -> 9MB*/
-
-#define MSM_PMEM_SF_BASE	0x2DD00000
 #define MSM_PMEM_SF_SIZE	0x01B40000
-
-#define MSM_PMEM_ADSP2_BASE     0x2F840000
 #define MSM_PMEM_ADSP2_SIZE     0x002C0000
-
-#define MSM_FB_BASE		0x2FB00000
 #define MSM_FB_SIZE		0x00500000
 
 /* GPIO definition */
@@ -135,6 +126,7 @@
 
 extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
+extern unsigned long msm_fb_base;
 extern int panel_type;
 
 int vivow_panel_sleep_in(void);

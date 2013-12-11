@@ -38,16 +38,9 @@
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE	0x00100000
 
-#define MSM_PMEM_ADSP_BASE	0x2A700000
 #define MSM_PMEM_ADSP_SIZE	0x01D00000
-
-#define PMEM_KERNEL_EBI1_BASE   0x2C400000
 #define PMEM_KERNEL_EBI1_SIZE   0x00700000
-
-#define MSM_PMEM_SF_BASE	0x2DB00000
 #define MSM_PMEM_SF_SIZE	0x02000000
-
-#define MSM_FB_BASE		0x2FB00000
 #define MSM_FB_SIZE		0x00500000
 
 #define GLACIER_GPIO_WIFI_IRQ             147
@@ -173,6 +166,7 @@
 /*display*/
 extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
+extern unsigned long msm_fb_base;
 extern int panel_type;
 
 unsigned int glacier_get_engineerid(void);

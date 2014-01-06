@@ -424,6 +424,7 @@ static ssize_t store_##file_name					\
 	ret = sscanf(buf, "%u", &new_policy.object);			\
 	if (ret != 1)							\
 		return -EINVAL;						\
+									\
 	ret = __cpufreq_set_policy(policy, &new_policy);		\
 	policy->user_policy.object = policy->object;			\
 									\
@@ -471,6 +472,9 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	unsigned int ret = -EINVAL;
 	char	str_governor[16];
 	struct cpufreq_policy new_policy;
+	char *envp[3];
+	char buf1[64];
+	char buf2[64];
 
 	ret = cpufreq_get_policy(&new_policy, policy->cpu);
 	if (ret)
@@ -492,6 +496,13 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	policy->user_policy.governor = policy->governor;
 
 	sysfs_notify(&policy->kobj, NULL, "scaling_governor");
+
+	snprintf(buf1, sizeof(buf1), "GOV=%s", policy->governor->name);
+	snprintf(buf2, sizeof(buf2), "CPU=%u", policy->cpu);
+	envp[0] = buf1;
+	envp[1] = buf2;
+	envp[2] = NULL;
+	kobject_uevent_env(cpufreq_global_kobject, KOBJ_ADD, envp);
 
 	if (ret)
 		return ret;
@@ -593,72 +604,6 @@ static ssize_t show_scaling_setspeed(struct cpufreq_policy *policy, char *buf)
 	return policy->governor->show_setspeed(policy, buf);
 }
 
-#ifdef CONFIG_VDD_SYSFS_INTERFACE
-extern ssize_t acpuclk_get_vdd_levels_str(char *buf);
-static ssize_t show_vdd_levels(struct cpufreq_policy *policy, char *buf)
-{
-	return acpuclk_get_vdd_levels_str(buf);
-}
-
-extern void acpuclk_set_vdd(unsigned acpu_khz, int vdd);
-static ssize_t store_vdd_levels(struct cpufreq_policy *policy, const char *buf, size_t count)
-{
-	int i = 0, j;
-	int pair[2] = { 0, 0 };
-	int sign = 0;
-
-	if (count < 1)
-		return 0;
-
-	if (buf[0] == '-')
-	{
-		sign = -1;
-		i++;
-	}
-	else if (buf[0] == '+')
-	{
-		sign = 1;
-		i++;
-	}
-
-	for (j = 0; i < count; i++)
-	{
-		char c = buf[i];
-		if ((c >= '0') && (c <= '9'))
-		{
-			pair[j] *= 10;
-			pair[j] += (c - '0');
-		}
-		else if ((c == ' ') || (c == '\t'))
-		{
-			if (pair[j] != 0)
-			{
-				j++;
-				if ((sign != 0) || (j > 1))
-					break;
-			}
-		}
-		else
-			break;
-	}
-
-	if (sign != 0)
-	{
-		if (pair[0] > 0)
-			acpuclk_set_vdd(0, sign * pair[0]);
-	}
-	else
-	{
-		if ((pair[0] > 0) && (pair[1] > 0))
-			acpuclk_set_vdd((unsigned)pair[0], pair[1]);
-		else
-			return -EINVAL;
-	}
-
-	return count;
-}
-#endif /* CONFIG_VDD_SYSFS_INTERFACE */
-
 /**
  * show_scaling_driver - show the current cpufreq HW/BIOS limitation
  */
@@ -689,9 +634,6 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
-#ifdef CONFIG_VDD_SYSFS_INTERFACE
-cpufreq_freq_attr_rw(vdd_levels);
-#endif /* CONFIG_VDD_SYSFS_INTERFACE */
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -706,9 +648,6 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
-#ifdef CONFIG_VDD_SYSFS_INTERFACE
-	&vdd_levels.attr,
-#endif /* CONFIG_VDD_SYSFS_INTERFACE */
 	NULL
 };
 
@@ -1065,13 +1004,6 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 		pr_debug("initialization failed\n");
 		goto err_unlock_policy;
 	}
-
-	/*
-	 * affected cpus must always be the one, which are online. We aren't
-	 * managing offline cpus here.
-	 */
-	cpumask_and(policy->cpus, policy->cpus, cpu_online_mask);
-
 	policy->user_policy.min = policy->min;
 	policy->user_policy.max = policy->max;
 
@@ -1755,6 +1687,11 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	memcpy(&policy->cpuinfo, &data->cpuinfo,
 				sizeof(struct cpufreq_cpuinfo));
 
+	if (policy->min > data->max || policy->max < data->min) {
+		ret = -EINVAL;
+		goto error_out;
+	}
+
 	/* verify the cpu speed can be set within this limit */
 	ret = cpufreq_driver->verify(policy);
 	if (ret)
@@ -1890,6 +1827,31 @@ static int __cpuinit cpufreq_cpu_callback(struct notifier_block *nfb,
 		case CPU_ONLINE:
 		case CPU_ONLINE_FROZEN:
 			cpufreq_add_dev(sys_dev);
+#ifdef CONFIG_SEC_DVFS
+			if (cpu == NON_BOOT_CPU)
+			{
+#ifndef CONFIG_SEC_DVFS_UNI			
+				unsigned int cur, min, max;
+				
+				/* get current freq & update now */
+				min = get_min_lock();
+				max = get_max_lock();
+				cur = cpufreq_quick_get(cpu);
+				if (cur)
+				{
+					struct cpufreq_policy policy;
+					policy.cpu = cpu;
+
+					if (min && cur < min)
+						cpufreq_driver_target(&policy, min, CPUFREQ_RELATION_H);
+					else if (max && cur > max)
+						cpufreq_driver_target(&policy, max, CPUFREQ_RELATION_L);
+				}
+#else
+				set_freq_limit(DVFS_UNICPU_ID, -1);
+#endif
+			}
+#endif
 			break;
 		case CPU_DOWN_PREPARE:
 		case CPU_DOWN_PREPARE_FROZEN:
@@ -1897,6 +1859,10 @@ static int __cpuinit cpufreq_cpu_callback(struct notifier_block *nfb,
 				BUG();
 
 			__cpufreq_remove_dev(sys_dev);
+#ifdef CONFIG_SEC_DVFS_UNI
+			if (cpu == NON_BOOT_CPU)
+				set_freq_limit(DVFS_UNICPU_ID, 0);
+#endif			
 			break;
 		case CPU_DOWN_FAILED:
 		case CPU_DOWN_FAILED_FROZEN:

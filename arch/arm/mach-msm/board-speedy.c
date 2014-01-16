@@ -2996,10 +2996,6 @@ static void __init speedy_init(void)
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
 	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
 
-#ifdef CONFIG_MSM_CAMERA
-	config_gpio_table(camera_on_gpio_table, ARRAY_SIZE(camera_on_gpio_table));
-#endif
-
 	/*Virtual_key*/
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
 	if (properties_kobj)

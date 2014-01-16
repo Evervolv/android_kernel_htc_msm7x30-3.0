@@ -3109,10 +3109,6 @@ static void __init glacier_init(void)
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
 	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
 
-#ifdef CONFIG_MSM_CAMERA
-	config_gpio_table(camera_on_gpio_table, ARRAY_SIZE(camera_on_gpio_table));
-#endif
-
 	if ((system_rev >= 0x80) || (engineerid & 0x2)){
 		glacier_oj_data.ap_code = true;
 		platform_device_register(&glacier_oj);

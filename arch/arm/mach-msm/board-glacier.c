@@ -499,13 +499,6 @@ static struct tps65200_platform_data tps65200_data = {
 	.charger_check = 0,
 };
 
-static struct a1026_platform_data a1026_data = {
-       .gpio_a1026_micsel = GLACIER_AUD_MICPATH_SEL,
-       .gpio_a1026_wakeup = GLACIER_AUD_A1026_WAKEUP,
-       .gpio_a1026_reset = GLACIER_AUD_A1026_RESET,
-       .gpio_a1026_clk = GLACIER_AUD_A1026_CLK,
-};
-
 static struct i2c_board_info i2c_devices[] = {
 	{
 		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0x94 >> 1),
@@ -523,13 +516,6 @@ static struct i2c_board_info i2c_devices[] = {
 	},
 };
 
-static struct i2c_board_info i2c_a1026_devices[] = {
-	{
-			I2C_BOARD_INFO("audience_a1026", 0x3E),
-			.platform_data = &a1026_data,
-	},
-};
-
 static struct i2c_board_info i2c_compass_devices[] = {
 	{
 		I2C_BOARD_INFO(AKM8975_I2C_NAME, 0x1A >> 1),
@@ -537,7 +523,6 @@ static struct i2c_board_info i2c_compass_devices[] = {
 		.irq = MSM_GPIO_TO_INT(GLACIER_GPIO_COMPASS_INT),
 	},
 };
-
 
 static int pm8058_gpios_init(void)
 {
@@ -1525,8 +1510,33 @@ static void __init aux_pcm_gpio_init(void)
 		ARRAY_SIZE(aux_pcm_gpio_off));
 }
 
+#ifdef CONFIG_VP_A1026
+static struct a1026_platform_data a1026_data = {
+       .gpio_a1026_micsel = GLACIER_AUD_MICPATH_SEL,
+       .gpio_a1026_wakeup = GLACIER_AUD_A1026_WAKEUP,
+       .gpio_a1026_reset = GLACIER_AUD_A1026_RESET,
+       .gpio_a1026_clk = GLACIER_AUD_A1026_CLK,
+};
+
+static struct i2c_board_info i2c_a1026_devices[] = {
+	{
+			I2C_BOARD_INFO("audience_a1026", 0x3E),
+			.platform_data = &a1026_data,
+	},
+};
+
+static unsigned audience_gpio_table[] = {
+	PCOM_GPIO_CFG(GLACIER_AUD_A1026_INT, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
+	PCOM_GPIO_CFG(GLACIER_AUD_MICPATH_SEL, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
+	PCOM_GPIO_CFG(GLACIER_AUD_A1026_RESET, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
+	PCOM_GPIO_CFG(GLACIER_AUD_A1026_WAKEUP, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
+};
+
 static void __init audience_gpio_reset(void)
 {
+    	config_gpio_table(audience_gpio_table,
+		ARRAY_SIZE(audience_gpio_table));
+
 	gpio_set_value(GLACIER_AUD_A1026_INT, 0);
 	mdelay(2);
 	gpio_set_value(GLACIER_AUD_MICPATH_SEL, 0);
@@ -1535,8 +1545,10 @@ static void __init audience_gpio_reset(void)
 	mdelay(2);
 	gpio_set_value(GLACIER_AUD_A1026_WAKEUP, 0);
 	mdelay(5);
+
 	pr_info("Configure audio codec gpio for devices without audience.\n");
 }
+#endif
 
 #ifdef CONFIG_USB_G_ANDROID
 static struct android_usb_platform_data android_usb_pdata = {
@@ -3125,12 +3137,15 @@ static void __init glacier_init(void)
 	msm_snddev_init();
 	glacier_audio_init();
 #endif
+
+#ifdef CONFIG_VP_A1026
 	/*Bit2: 0: with audience. 1: without audience*/
 	if (engineerid & 0x4)
 		audience_gpio_reset();
 	else
 		i2c_register_board_info(0, i2c_a1026_devices,
 				ARRAY_SIZE(i2c_a1026_devices));
+#endif
 
 	msm_init_pmic_vibrator(3000);
 

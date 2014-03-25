@@ -116,6 +116,7 @@
 static struct platform_device ion_dev;
 #define MSM_ION_HEAP_NUM	3
 #define MSM_ION_CAMERA_SIZE	MSM_PMEM_ADSP_SIZE
+#define MSM_ION_SF_BASE		MSM_PMEM_SF_BASE
 #define MSM_ION_SF_SIZE		MSM_PMEM_SF_SIZE
 #endif
 
@@ -3239,10 +3240,20 @@ static void fix_sizes(void)
 #endif
 }
 
+#ifdef CONFIG_ANDROID_PMEM
+static void __init size_pmem_device(struct android_pmem_platform_data *pdata, unsigned long start, unsigned long size)
+{
+	pdata->start = start;
+	pdata->size = size;
+	pr_info("%s: allocating %lu bytes at 0x%p (0x%lx physical) for %s\n",
+		__func__, size, __va(start), start, pdata->name);
+}
+#endif
+
 static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
-	android_pmem_adsp_pdata.size = pmem_adsp_size;
+	size_pmem_device(&android_pmem_adsp_pdata, MSM_PMEM_ADSP_BASE, pmem_adsp_size);
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	android_pmem_pdata.size = pmem_sf_size;
 #endif
@@ -3262,7 +3273,6 @@ static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 static void __init reserve_pmem_memory(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
-	reserve_memory_for(&android_pmem_adsp_pdata);
         msm7x30_reserve_table[MEMTYPE_EBI0].size += PMEM_KERNEL_EBI0_SIZE;
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	reserve_memory_for(&android_pmem_pdata);
@@ -3273,16 +3283,10 @@ static void __init reserve_pmem_memory(void)
 static void __init size_ion_devices(void)
 {
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	ion_pdata.heaps[1].base = MSM_PMEM_ADSP_BASE;
 	ion_pdata.heaps[1].size = MSM_ION_CAMERA_SIZE;
+	ion_pdata.heaps[2].base = MSM_ION_SF_BASE;
 	ion_pdata.heaps[2].size = MSM_ION_SF_SIZE;
-#endif
-}
-
-static void __init reserve_ion_memory(void)
-{
-#if defined(CONFIG_ION_MSM) && defined(CONFIG_MSM_MULTIMEDIA_USE_ION)
-	msm7x30_reserve_table[MEMTYPE_EBI0].size += MSM_ION_CAMERA_SIZE;
-	msm7x30_reserve_table[MEMTYPE_EBI0].size += MSM_ION_SF_SIZE;
 #endif
 }
 
@@ -3292,7 +3296,6 @@ static void __init msm7x30_calculate_reserve_sizes(void)
 	size_pmem_devices();
 	reserve_pmem_memory();
 	size_ion_devices();
-	reserve_ion_memory();
 }
 
 static int msm7x30_paddr_to_memtype(unsigned int paddr)

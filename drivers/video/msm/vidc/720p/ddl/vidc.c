@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,13 +15,11 @@
 #include <media/msm/vidc_type.h>
 #include "vidc.h"
 
-/*HTC_START*/
-extern u32 vidc_msg_debug;
-#define DBG(x...)				\
-	if (vidc_msg_debug) {			\
-		printk(KERN_DEBUG "[VID] " x);	\
-	}
-/*HTC_END*/
+#if DEBUG
+#define DBG(x...) printk(KERN_DEBUG x)
+#else
+#define DBG(x...)
+#endif
 
 #define VIDC_720P_VERSION_STRING "VIDC_V1.0"
 u8 *vidc_base_addr;

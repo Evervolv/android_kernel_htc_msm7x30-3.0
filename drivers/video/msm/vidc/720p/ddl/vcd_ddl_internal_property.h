@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -55,6 +55,12 @@ struct vcd_property_adaptive_rc_params {
 	u32 smooth_region_as_flag;
 	u32 static_region_as_flag;
 	u32 activity_region_flag;
+};
+
+struct vcd_property_slice_delivery_info {
+	u32  enable;
+	u32  num_slices;
+	u32  num_slices_enc;
 };
 
 struct ddl_frame_data_tag;

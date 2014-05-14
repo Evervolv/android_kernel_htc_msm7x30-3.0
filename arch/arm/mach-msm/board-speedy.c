@@ -112,29 +112,6 @@
 #endif
 int htc_get_usb_accessory_adc_level(uint32_t *buffer);
 
-#define GPIO_2MA	0
-#define GPIO_4MA	1
-#define GPIO_6MA	2
-#define GPIO_8MA	3
-#define GPIO_10MA	4
-#define GPIO_12MA	5
-#define GPIO_14MA	6
-#define GPIO_16MA	7
-
-#define GPIO_INPUT      0
-#define GPIO_OUTPUT     1
-
-#define GPIO_NO_PULL    0
-#define GPIO_PULL_DOWN  1
-#define GPIO_PULL_UP    3
-
-#define PCOM_GPIO_CFG(gpio, func, dir, pull, drvstr) \
-		((((gpio) & 0x3FF) << 4)        | \
-		((func) & 0xf)                  | \
-		(((dir) & 0x1) << 14)           | \
-		(((pull) & 0x3) << 15)          | \
-		(((drvstr) & 0xF) << 17))
-
 #ifdef CONFIG_ION_MSM
 static struct platform_device ion_dev;
 #define MSM_ION_HEAP_NUM	2
@@ -708,19 +685,6 @@ static int pm8058_gpios_init(void)
 		}
 	};
 
-	struct pm8xxx_gpio_init_info keypad_gpio = {
-		PM8058_GPIO_PM_TO_SYS(0),
-		{
-			.direction      = PM_GPIO_DIR_IN,
-			.output_buffer  = 0,
-			.output_value   = 0,
-			.pull           = PM_GPIO_PULL_UP_31P5,
-			.vin_sel        = PM8058_GPIO_VIN_S3,
-			.out_strength   = 0,
-			.function       = PM_GPIO_FUNC_NORMAL,
-		}
-	};
-
 	struct pm8xxx_gpio_init_info wimax_host_wakeup = {
 		PM8058_GPIO_PM_TO_SYS(SPEEDY_WiMAX_HOST_WAKEUP),
 		{
@@ -829,12 +793,6 @@ static int pm8058_gpios_init(void)
 		pr_err("%s SPEEDY_KEYPAD_LED config failed\n", __func__);
 		return rc;
 	}
-
-	/* direct keys */
-	keypad_gpio.gpio = SPEEDY_VOL_UP;
-	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
-	keypad_gpio.gpio = SPEEDY_VOL_DN;
-	pm8xxx_gpio_config(keypad_gpio.gpio, &keypad_gpio.config);
 
 	/* audio power */
 	rc = pm8xxx_gpio_config(gpio18.gpio, &gpio18.config);
@@ -1441,10 +1399,10 @@ static struct platform_device msm_device_adspdec = {
 };
 
 static unsigned aux_pcm_gpio_off[] = {
-	PCOM_GPIO_CFG(138, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),   /* PCM_DOUT */
-	PCOM_GPIO_CFG(139, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA),   /* PCM_DIN  */
-	PCOM_GPIO_CFG(140, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),   /* PCM_SYNC */
-	PCOM_GPIO_CFG(141, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),   /* PCM_CLK  */
+	GPIO_CFG(138, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_DOUT */
+	GPIO_CFG(139, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),   /* PCM_DIN  */
+	GPIO_CFG(140, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_SYNC */
+	GPIO_CFG(141, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_CLK  */
 };
 
 static void __init aux_pcm_gpio_init(void)
@@ -1479,7 +1437,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.products		= usb_products,
 	.num_functions		= ARRAY_SIZE(usb_functions_all),
 	.functions		= usb_functions_all,
-	.fserial_init_string	= "tty:modem,tty:autobot,tty:serial,tty:autobot",
+	.fserial_init_string	= "tty:modem,tty:autobot,tty:serial",
 	.nluns			= 1,
 	.usb_id_pin_gpio = SPEEDY_GPIO_USB_ID_PIN,
 };
@@ -1551,17 +1509,17 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 };
 
 static uint32_t qsd_spi_gpio_on_table[] = {
-	PCOM_GPIO_CFG(45, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(47, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(48, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(87, 2, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA)
+	GPIO_CFG(45, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+	GPIO_CFG(47, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+	GPIO_CFG(48, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+	GPIO_CFG(87, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA)
 };
 
 static uint32_t qsd_spi_gpio_off_table[] = {
-	PCOM_GPIO_CFG(45, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(47, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(48, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(87, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA)
+	GPIO_CFG(45, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+	GPIO_CFG(47, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+	GPIO_CFG(48, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA),
+	GPIO_CFG(87, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA)
 };
 
 static int msm_qsd_spi_gpio_config(void)
@@ -1737,16 +1695,9 @@ static struct platform_device msm_migrate_pages_device = {
 };
 
 static struct android_pmem_platform_data android_pmem_adsp_pdata = {
-       .name = "pmem_adsp",
-       .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-       .cached = 1,
-	.memory_type = MEMTYPE_EBI0,
-};
-
-static struct android_pmem_platform_data android_pmem_audio_pdata = {
-       .name = "pmem_audio",
-       .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-       .cached = 0,
+	.name = "pmem_adsp",
+	.allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
+	.cached = 0,
 	.memory_type = MEMTYPE_EBI0,
 };
 
@@ -1754,12 +1705,6 @@ static struct platform_device android_pmem_adsp_device = {
        .name = "android_pmem",
        .id = 2,
        .dev = { .platform_data = &android_pmem_adsp_pdata },
-};
-
-static struct platform_device android_pmem_audio_device = {
-       .name = "android_pmem",
-       .id = 4,
-       .dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
 static struct htc_battery_platform_data htc_battery_pdev_data = {
@@ -1807,7 +1752,6 @@ struct platform_device speedy_bcm_bt_lpm_device = {
 #endif
 #endif
 
-#ifdef CONFIG_MSM_CAMERA
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #ifdef CONFIG_S5K4E1GX
 	{
@@ -1816,45 +1760,46 @@ static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #endif
 };
 
+#ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
 	/* parallel CAMERA interfaces */
-	PCOM_GPIO_CFG(SPEEDY_CAM_RST, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA),
-	PCOM_GPIO_CFG(SPEEDY_CAM_PWD, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA),
-	PCOM_GPIO_CFG(2,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT2 */
-	PCOM_GPIO_CFG(3,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT3 */
-	PCOM_GPIO_CFG(4,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT4 */
-	PCOM_GPIO_CFG(5,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT5 */
-	PCOM_GPIO_CFG(6,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT6 */
-	PCOM_GPIO_CFG(7,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT7 */
-	PCOM_GPIO_CFG(8,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT8 */
-	PCOM_GPIO_CFG(9,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT9 */
-	PCOM_GPIO_CFG(10, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT10 */
-	PCOM_GPIO_CFG(11, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT11 */
-	PCOM_GPIO_CFG(12, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* PCLK */
-	PCOM_GPIO_CFG(13, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* HSYNC_IN */
-	PCOM_GPIO_CFG(14, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* VSYNC_IN */
-	PCOM_GPIO_CFG(15, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), /* MCLK */
+	GPIO_CFG(SPEEDY_CAM_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(SPEEDY_CAM_PWD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(2,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT2 */
+	GPIO_CFG(3,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT3 */
+	GPIO_CFG(4,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT4 */
+	GPIO_CFG(5,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT5 */
+	GPIO_CFG(6,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT6 */
+	GPIO_CFG(7,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT7 */
+	GPIO_CFG(8,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT8 */
+	GPIO_CFG(9,  0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT9 */
+	GPIO_CFG(10, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT10 */
+	GPIO_CFG(11, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* DAT11 */
+	GPIO_CFG(12, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* PCLK */
+	GPIO_CFG(13, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* HSYNC_IN */
+	GPIO_CFG(14, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), /* VSYNC_IN */
+	GPIO_CFG(15, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), /* MCLK */
 
 };
 
 static uint32_t camera_on_gpio_table[] = {
 	/* parallel CAMERA interfaces */
-	PCOM_GPIO_CFG(SPEEDY_CAM_RST, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),
-	PCOM_GPIO_CFG(SPEEDY_CAM_PWD, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),
-	PCOM_GPIO_CFG(2,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT2 */
-	PCOM_GPIO_CFG(3,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT3 */
-	PCOM_GPIO_CFG(4,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT4 */
-	PCOM_GPIO_CFG(5,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT5 */
-	PCOM_GPIO_CFG(6,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT6 */
-	PCOM_GPIO_CFG(7,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT7 */
-	PCOM_GPIO_CFG(8,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT8 */
-	PCOM_GPIO_CFG(9,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT9 */
-	PCOM_GPIO_CFG(10, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT10 */
-	PCOM_GPIO_CFG(11, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT11 */
-	PCOM_GPIO_CFG(12, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PCLK */
-	PCOM_GPIO_CFG(13, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* HSYNC_IN */
-	PCOM_GPIO_CFG(14, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* VSYNC_IN */
-	PCOM_GPIO_CFG(15, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA), /* MCLK */
+	GPIO_CFG(SPEEDY_CAM_RST, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(SPEEDY_CAM_PWD, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(2,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT2 */
+	GPIO_CFG(3,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT3 */
+	GPIO_CFG(4,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT4 */
+	GPIO_CFG(5,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT5 */
+	GPIO_CFG(6,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT6 */
+	GPIO_CFG(7,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT7 */
+	GPIO_CFG(8,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT8 */
+	GPIO_CFG(9,  1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT9 */
+	GPIO_CFG(10, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT10 */
+	GPIO_CFG(11, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* DAT11 */
+	GPIO_CFG(12, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* PCLK */
+	GPIO_CFG(13, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* HSYNC_IN */
+	GPIO_CFG(14, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), /* VSYNC_IN */
+	GPIO_CFG(15, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), /* MCLK */
 
 };
 
@@ -1981,8 +1926,8 @@ static int flashlight_control(int mode)
 }
 
 uint32_t flashlight_gpio_table[] = {
-	PCOM_GPIO_CFG(SPEEDY_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
-						GPIO_NO_PULL, GPIO_2MA),
+	GPIO_CFG(SPEEDY_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 };
 
 static void config_speedy_flashlight_gpios(void)
@@ -2130,11 +2075,11 @@ int64_t speedy_get_usbid_adc(void)
 }
 
 static uint32_t usb_ID_PIN_input_table[] = {
-	GPIO_CFG(SPEEDY_GPIO_USB_ID_PIN, 0, GPIO_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+	GPIO_CFG(SPEEDY_GPIO_USB_ID_PIN, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
 static uint32_t usb_ID_PIN_output_table[] = {
-	GPIO_CFG(SPEEDY_GPIO_USB_ID_PIN, 0, GPIO_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+	GPIO_CFG(SPEEDY_GPIO_USB_ID_PIN, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
 void config_speedy_usb_id_gpios(bool output)
@@ -2170,15 +2115,15 @@ static struct msm_gpio msm_i2c_gpios_hw[] = {
 };
 
 static struct msm_gpio msm_i2c_gpios_io[] = {
-	{ GPIO_CFG(70, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
-	{ GPIO_CFG(71, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_sda" },
+	{ GPIO_CFG(70, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
+	{ GPIO_CFG(71, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_sda" },
 };
 
 static struct msm_gpio qup_i2c_gpios_io[] = {
-	{ GPIO_CFG(16, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
-	{ GPIO_CFG(17, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
-
+	{ GPIO_CFG(16, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
+	{ GPIO_CFG(17, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
 };
+
 static struct msm_gpio qup_i2c_gpios_hw[] = {
 	{ GPIO_CFG(16, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_scl" },
 	{ GPIO_CFG(17, 2, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "qup_sda" },
@@ -2772,7 +2717,7 @@ __setup("androidboot.serialno=", board_serialno_setup);
 static void speedy_te_gpio_config(void)
 {
 	uint32_t te_gpio_table[] = {
-	PCOM_GPIO_CFG(30, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),
+	GPIO_CFG(30, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	};
 	config_gpio_table(te_gpio_table, ARRAY_SIZE(te_gpio_table));
 }
@@ -2817,7 +2762,6 @@ static struct platform_device *devices[] __initdata = {
         &msm_rotator_device,
 #endif
         &android_pmem_adsp_device,
-        &android_pmem_audio_device,
         &msm_device_i2c,
         &msm_device_i2c_2,
 #ifdef CONFIG_MSM7KV2_AUDIO

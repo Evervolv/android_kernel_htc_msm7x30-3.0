@@ -4721,6 +4721,7 @@ static void __init size_ion_devices(void)
 static void __init reserve_ion_memory(void)
 {
 #if defined(CONFIG_ION_MSM) && defined(CONFIG_MSM_MULTIMEDIA_USE_ION)
+	msm7x30_reserve_table[MEMTYPE_EBI0].size += MSM_ION_CAMERA_SIZE;
 	msm7x30_reserve_table[MEMTYPE_EBI0].size += MSM_ION_SF_SIZE;
 #endif
 }

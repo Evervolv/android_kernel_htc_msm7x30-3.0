@@ -1159,7 +1159,7 @@ CONFIG_CABLE_DETECT_ACCESSORY=y
 #
 # Texas Instruments shared transport line discipline
 #
-CONFIG_TI_ST=y
+# CONFIG_TI_ST is not set
 # CONFIG_SENSORS_LIS3_SPI is not set
 # CONFIG_SENSORS_LIS3_I2C is not set
 # CONFIG_MPU_SENSORS_MPU3050 is not set

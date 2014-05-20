@@ -129,12 +129,15 @@ static u32 res_trk_disable_videocore(void)
 	clk_put(resource_context.hclk_div2);
 	clk_put(resource_context.hclk);
 	clk_put(resource_context.pclk);
-
-	rc = regulator_disable(resource_context.regulator);
-	if (rc) {
-		VCDRES_MSG_ERROR("\n regulator disable failed %d\n", rc);
-		mutex_unlock(&resource_context.lock);
-		return false;
+/* HTC_START - Check regulator pointer */
+	if (!IS_ERR(resource_context.regulator)) {
+		rc = regulator_disable(resource_context.regulator);
+		if (rc) {
+			VCDRES_MSG_ERROR("\n regulator disable failed %d\n", rc);
+			mutex_unlock(&resource_context.lock);
+			return false;
+		}
+/* HTC_END */
 	}
 
 	resource_context.hclk_div2 = NULL;
@@ -268,16 +271,18 @@ static u32 res_trk_enable_videocore(void)
 	mutex_lock(&resource_context.lock);
 	if (!resource_context.rail_enabled) {
 		int rc = -1;
-
-		rc = regulator_enable(resource_context.regulator);
-		if (rc) {
-			VCDRES_MSG_ERROR("%s(): regulator_enable failed %d\n",
-							 __func__, rc);
-			goto bail_out;
+/* HTC_START - Check regulator pointer */
+		if (!IS_ERR(resource_context.regulator)) {
+			rc = regulator_enable(resource_context.regulator);
+			if (rc) {
+				VCDRES_MSG_ERROR("%s(): regulator_enable failed %d\n",
+								 __func__, rc);
+				goto bail_out;
+			}
+			VCDRES_MSG_LOW("%s(): regulator enable Success %d\n",
+								__func__, rc);
 		}
-		VCDRES_MSG_LOW("%s(): regulator enable Success %d\n",
-							__func__, rc);
-
+/* HTC_END */
 		resource_context.pclk = clk_get(resource_context.device,
 			"iface_clk");
 

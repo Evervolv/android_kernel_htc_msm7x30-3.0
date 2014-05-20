@@ -360,7 +360,6 @@ int msm7x30_wifi_reset(int on)
 	return 0;
 }
 
-
 /* ---------------- WiMAX GPIO Settings --------------- */
 static uint32_t wimax_on_gpio_table[] = {
 	PCOM_GPIO_CFG(SPEEDY_GPIO_WIMAX_SDIO_D0, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA), /* DAT0 */
@@ -516,6 +515,7 @@ EXPORT_SYMBOL(mmc_wimax_get_hostwakeup_IRQ_ID);
 
 void mmc_wimax_enable_host_wakeup(int on)
 {
+#ifdef CONFIG_WIMAX
 	if (mmc_wimax_get_status()) {	
 		if (on) {
 			if (!mmc_wimax_get_gpio_irq_enabled()) {
@@ -535,6 +535,7 @@ void mmc_wimax_enable_host_wakeup(int on)
 	} else {
 		printk(KERN_INFO "[WIMAX] %s mmc_wimax_sdio_status is OFF\n", __func__);
 	}
+#endif
 }
 EXPORT_SYMBOL(mmc_wimax_enable_host_wakeup);
 

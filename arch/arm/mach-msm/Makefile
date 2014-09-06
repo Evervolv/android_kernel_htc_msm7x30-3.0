@@ -481,6 +481,11 @@ endif
 obj-$(CONFIG_MACH_SPEEDY) += board-speedy-mmc.o
 obj-$(CONFIG_MACH_SPEEDY) += display/speedy-panel.o
 obj-$(CONFIG_MACH_SPEEDY) += htc_bdaddress.o board-speedy-rfkill.o
+obj-$(CONFIG_MACH_LEXIKON) += board-lexikon.o board-lexikon-microp.o 
+obj-$(CONFIG_MACH_LEXIKON) += board-lexikon-keypad.o board-lexikon-audio.o
+obj-$(CONFIG_MACH_LEXIKON) += board-lexikon-mmc.o
+obj-$(CONFIG_MACH_LEXIKON) += display/lexikon-panel.o
+obj-$(CONFIG_MACH_LEXIKON) += htc_bdaddress.o board-lexikon-rfkill.o
 obj-$(CONFIG_MACH_VISION) += board-vision.o
 obj-$(CONFIG_MACH_VISION) += board-vision-microp.o board-vision-rfkill.o
 obj-$(CONFIG_MACH_VISION) += board-vision-keypad.o board-vision-audio.o
@@ -528,8 +533,9 @@ endif
 obj-$(CONFIG_MACH_KINGDOM) += board-kingdom-mmc.o
 obj-$(CONFIG_MACH_KINGDOM) += htc_bdaddress.o board-kingdom-rfkill.o
 
-
+ifneq ($(CONFIG_MACH_LEXIKON),y)
 obj-$(CONFIG_ARCH_MSM_FLASHLIGHT) += msm_flashlight.o
+endif
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 

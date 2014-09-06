@@ -116,6 +116,7 @@ static struct adie_codec_register adie_codec_lb_regs[] = {
 struct adie_codec_state {
 	struct adie_codec_path path[ADIE_CODEC_MAX];
 	u32 ref_cnt;
+	u32 usb_state;	
 	struct marimba *pdrv_ptr;
 	struct marimba_codec_platform_data *codec_pdata;
 	struct mutex lock;
@@ -750,6 +751,89 @@ static int marimba_adie_codec_close(struct adie_codec_path *path_ptr)
 		}
 	}
 
+error:
+	mutex_unlock(&adie_codec.lock);
+	return rc;
+}
+
+int usb_headset_adie_enable(int enable)
+{
+	int rc = 0;
+	mutex_lock(&adie_codec.lock);
+	if (!adie_codec.ref_cnt && enable) {
+
+		if (adie_codec.codec_pdata &&
+				adie_codec.codec_pdata->marimba_codec_power) {
+
+			rc = adie_codec.codec_pdata->marimba_codec_power(1);
+			if (rc) {
+				pr_aud_err("%s: could not power up marimba "
+						"codec\n", __func__);
+				goto error;
+			}
+		}
+
+		/* bring up sequence for Marimba codec core
+		 * ensure RESET_N = 0 and GDFS_CLAMP_EN=1 -
+		 * set GDFS_EN_FEW=1 then GDFS_EN_REST=1 then
+		 * GDFS_CLAMP_EN = 0 and finally RESET_N = 1
+		 * Marimba codec bring up should use the Marimba
+		 * slave address after which the codec slave
+		 * address can be used
+		 */
+
+		/* Bring up codec */
+		adie_codec_write(0xFF, 0xFF, 0x08);
+		/* set GDFS_EN_FEW=1 */
+		adie_codec_write(0xFF, 0xFF, 0x0a);
+		/* set GDFS_EN_REST=1 */
+		adie_codec_write(0xFF, 0xFF, 0x0e);
+		/* set RESET_N=1 */
+		adie_codec_write(0xFF, 0xFF, 0x07);
+		adie_codec_write(0xFF, 0xFF, 0x17);
+		/* enable band gap */
+		adie_codec_write(0x03, 0xFF, 0x04);
+		/* dither delay selected and dmic gain stage bypassed */
+		adie_codec_write(0x8F, 0xFF, 0x44);
+		/* usb audio adie parameter */
+
+		adie_codec_write(0x8a, 0xFF, 0x03);
+		adie_codec_write(0x83, 0xFF, 0x00);
+		adie_codec_write(0x33, 0xFF, 0x8f);
+		mdelay(30);
+		adie_codec.usb_state = 1;
+		adie_codec.ref_cnt++;
+		pr_aud_err("usb adie enabled\n");
+	} else if (enable) {
+		adie_codec.ref_cnt++;
+		adie_codec.usb_state = 1;
+	} else if (!enable && adie_codec.ref_cnt > 1) {
+		adie_codec.ref_cnt--;
+		adie_codec.usb_state = 0;
+	} else if (!enable && adie_codec.ref_cnt == 1) {
+		adie_codec.ref_cnt = 0;
+		adie_codec.usb_state = 0;
+		adie_codec_write(0x8a, 0x03, 0x03);
+		adie_codec_write(0x33, 0xFF, 0x03);
+		adie_codec_write(0x33, 0xFF, 0x00);
+		adie_codec_write(0xFF, 0xFF, 0x07);
+		adie_codec_write(0xFF, 0xFF, 0x06);
+		adie_codec_write(0xFF, 0xFF, 0x0e);
+		adie_codec_write(0xFF, 0xFF, 0x08);
+		adie_codec_write(0x03, 0xFF, 0x00);
+
+		if (adie_codec.codec_pdata &&
+				adie_codec.codec_pdata->marimba_codec_power) {
+
+			rc = adie_codec.codec_pdata->marimba_codec_power(0);
+			if (rc) {
+				pr_aud_err("%s: could not power down marimba "
+						"codec\n", __func__);
+				goto error;
+			}
+		}
+		pr_aud_err("usb headset adie disabled");
+	}
 error:
 	mutex_unlock(&adie_codec.lock);
 	return rc;

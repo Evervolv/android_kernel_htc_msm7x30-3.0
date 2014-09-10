@@ -229,6 +229,7 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	msg[1].len = sizeof(buf);
 	msg[1].buf = buf;
 	ret = i2c_transfer(ts->client->adapter, msg, 2);
+	msleep(10);
 	if (ret < 0 || ((buf[0] & 0x0F))) {
 		if (ret < 0)
 			printk(KERN_ERR "synaptics_ts_work_func: i2c_transfer failed\n");

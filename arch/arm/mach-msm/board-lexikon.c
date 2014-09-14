@@ -372,7 +372,7 @@ static struct capella_cm3602_platform_data capella_cm3602_pdata = {
 	.power = capella_cm3602_power,
 	.p_en = PM8058_GPIO_PM_TO_SYS(LEXIKON_GPIO_PS_EN),
 	.p_out = PM8058_GPIO_PM_TO_SYS(LEXIKON_GPIO_PS_INT_N),
-	.irq = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(LEXIKON_GPIO_PS_INT_N)),
+	.irq = PM8058_GPIO_IRQ(PM8058_IRQ_BASE, LEXIKON_GPIO_PS_INT_N),
 };
 
 static struct platform_device capella_cm3602 = {

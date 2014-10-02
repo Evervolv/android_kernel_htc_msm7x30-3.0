@@ -2895,9 +2895,13 @@ __setup("androidboot.serialno=", board_serialno_setup);
 static void glacier_te_gpio_config(void)
 {
 	uint32_t te_gpio_table[] = {
-	GPIO_CFG(30, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		GPIO_CFG(30, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
 	};
-	config_gpio_table(te_gpio_table, ARRAY_SIZE(te_gpio_table));
+
+	/* Only enable on LCD-SH-C2 panel */
+	if (panel_type == PANEL_SHARP) {
+		config_gpio_table(te_gpio_table, ARRAY_SIZE(te_gpio_table));
+	}
 }
 #endif
 

@@ -37,6 +37,8 @@
 #include <linux/notifier.h>
 #include <linux/memory.h>
 #include <linux/memory_hotplug.h>
+#include <linux/swap.h>
+#include <linux/fs.h>
 
 static uint32_t lowmem_debug_level = 2;
 static int lowmem_adj[6] = {
@@ -119,10 +121,19 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int selected_tasksize = 0;
 	int selected_oom_adj;
 	int array_size = ARRAY_SIZE(lowmem_adj);
-	int other_free = global_page_state(NR_FREE_PAGES);
-	int other_file = global_page_state(NR_FILE_PAGES) -
-						global_page_state(NR_SHMEM);
+	int other_free;
+	int other_file;
 	struct zone *zone;
+
+	other_free = global_page_state(NR_FREE_PAGES);
+
+	if (global_page_state(NR_SHMEM) + total_swapcache_pages <
+		global_page_state(NR_FILE_PAGES))
+		other_file = global_page_state(NR_FILE_PAGES) -
+						global_page_state(NR_SHMEM) -
+						total_swapcache_pages;
+	else
+		other_file = 0;
 
 	if (offlining) {
 		/* Discount all free space in the section being offlined */

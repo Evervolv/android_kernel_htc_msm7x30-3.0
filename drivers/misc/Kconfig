@@ -693,6 +693,12 @@ config CABLE_DETECT_GPIO_DOCK
         depends on CABLE_DETECT_8960 || CABLE_DETECT_8X55
         default n
 
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	default n
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

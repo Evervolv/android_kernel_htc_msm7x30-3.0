@@ -46,9 +46,9 @@ static struct wake_lock mmc_removal_work_wake_lock;
 /*
  * Enabling software CRCs on the data blocks can be a significant (30%)
  * performance cost, and for other reasons may not always be desired.
- * So we allow it it to be disabled.
+ * So we allow it to be disabled.
  */
-int use_spi_crc = 1;
+int use_spi_crc = 0;
 module_param(use_spi_crc, bool, 0);
 
 /*

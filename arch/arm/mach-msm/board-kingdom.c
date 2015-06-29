@@ -1845,10 +1845,10 @@ static void Kingdom_seccam_clk_switch(void){
 	return;
 }
 #endif
-#if 1 // PG
+
 static int flashlight_control(int mode)
 {
-#ifdef CONFIG_FLASHLIGHT_AAT1271
+#ifdef CONFIG_FLASHLIGHT_AAT
 	return aat1271_flashlight_control(mode);
 #else
 	return 0;
@@ -1861,33 +1861,31 @@ static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.low_temp_limit = 10,
 	.low_cap_limit = 15,
 };
-#endif
+
 #ifdef CONFIG_S5K3H2YX
 static struct msm_camera_sensor_info msm_camera_sensor_s5k3h2yx_data = {
-  .sensor_name = "s5k3h2yx",
-  .sensor_pwd = CAM1_PWD,
-  .vcm_pwd = CAM1_VCM_PWD,
-  .camera_power_on = Kingdom_s5k3h2yx_vreg_on,
-  .camera_power_off = Kingdom_s5k3h2yx_vreg_off,
-  .camera_clk_switch = Kingdom_maincam_clk_switch,
-  .pdata = &camera_device_data,
-  .flash_type = MSM_CAMERA_FLASH_LED,
-  .resource = msm_camera_resources,
-  .num_resources = ARRAY_SIZE(msm_camera_resources),
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-  .flash_cfg = &msm_camera_sensor_flash_cfg,
-#endif
-  .power_down_disable = false, /* true: disable pwd down function */
-  .mirror_mode = 1,
-  .csi_if = 1,
-  .camera_platform = MSM_CAMERA_PLTFORM_7X30,
+	.sensor_name = "s5k3h2yx",
+	.sensor_pwd = CAM1_PWD,
+	.vcm_pwd = CAM1_VCM_PWD,
+	.camera_power_on = Kingdom_s5k3h2yx_vreg_on,
+	.camera_power_off = Kingdom_s5k3h2yx_vreg_off,
+	.camera_clk_switch = Kingdom_maincam_clk_switch,
+	.pdata = &camera_device_data,
+	.flash_type = MSM_CAMERA_FLASH_LED,
+	.resource = msm_camera_resources,
+	.num_resources = ARRAY_SIZE(msm_camera_resources),
+	.flash_cfg = &msm_camera_sensor_flash_cfg,
+	.power_down_disable = false, /* true: disable pwd down function */
+	.mirror_mode = 1,
+	.csi_if = 1,
+	.camera_platform = MSM_CAMERA_PLTFORM_7X30,
 };
 
 static struct platform_device msm_camera_sensor_s5k3h2yx = {
-  .name = "msm_camera_s5k3h2yx",
-  .dev = {
-    .platform_data = &msm_camera_sensor_s5k3h2yx_data,
-  },
+	.name = "msm_camera_s5k3h2yx",
+	.dev = {
+		.platform_data = &msm_camera_sensor_s5k3h2yx_data,
+	},
 };
 #endif
 
@@ -1902,7 +1900,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_ov8830_data = {
 	.camera_power_off = Kingdom_ov8830_vreg_off,
 	.camera_clk_switch	= Kingdom_maincam_clk_switch,
 	.pdata = &camera_device_data,
-  .flash_type = MSM_CAMERA_FLASH_LED,
+	.flash_type = MSM_CAMERA_FLASH_LED,
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.flash_cfg	= &msm_camera_sensor_flash_cfg,
@@ -1912,10 +1910,10 @@ static struct msm_camera_sensor_info msm_camera_sensor_ov8830_data = {
 };
 
 static struct platform_device msm_camera_sensor_ov8830 = {
-    .name	= "msm_camera_ov8830",
-    .dev	= {
-			.platform_data = &msm_camera_sensor_ov8830_data,
-    },
+	.name	= "msm_camera_ov8830",
+	.dev	= {
+		.platform_data = &msm_camera_sensor_ov8830_data,
+	},
 };
 #endif
 
@@ -1932,14 +1930,12 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e5yx_data = {
 	.flash_type = MSM_CAMERA_FLASH_LED,
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 	.flash_cfg = &msm_camera_sensor_flash_cfg,
-#endif
-  .power_down_disable = false, /* true: disable pwd down function */
+	.power_down_disable = false, /* true: disable pwd down function */
 	.csi_if = 1,
-  .camera_platform = MSM_CAMERA_PLTFORM_7X30,
-  .dev_node = 0,
-  .gpio_set_value_force = 1,/*use different method of gpio set value*/
+	.camera_platform = MSM_CAMERA_PLTFORM_7X30,
+	.dev_node = 0,
+	.gpio_set_value_force = 1,/*use different method of gpio set value*/
 };
 
 static struct platform_device msm_camera_sensor_s5k4e5yx = {
@@ -2000,26 +1996,6 @@ static struct platform_device msm_camera_sensor_s5k6aafx = {
 };
 #endif
 #endif
-#ifdef CONFIG_MSM_GEMINI
-static struct resource msm_gemini_resources[] = {
-	{
-		.start  = 0xA3A00000,
-		.end    = 0xA3A00000 + 0x0150 - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_JPEG,
-		.end    = INT_JPEG,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_gemini_device = {
-	.name           = "msm_gemini",
-	.resource       = msm_gemini_resources,
-	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
-};
-#endif
 
 #ifdef CONFIG_MSM_VPE
 static struct resource msm_vpe_resources[] = {
@@ -2044,6 +2020,27 @@ static struct platform_device msm_vpe_device = {
 #endif
 
 #endif /*CONFIG_MSM_CAMERA*/
+
+#ifdef CONFIG_MSM_GEMINI
+static struct resource msm_gemini_resources[] = {
+	{
+		.start  = 0xA3A00000,
+		.end    = 0xA3A00000 + 0x0150 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = INT_JPEG,
+		.end    = INT_JPEG,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_gemini_device = {
+	.name           = "msm_gemini",
+	.resource       = msm_gemini_resources,
+	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+};
+#endif
 
 #ifdef CONFIG_MSM7KV2_AUDIO
 
@@ -4290,7 +4287,7 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resources,
 };
 
-#ifdef CONFIG_FLASHLIGHT_AAT1271
+#ifdef CONFIG_FLASHLIGHT_AAT
 static void config_flashlight_gpios(void)
 {
 	uint32_t flashlight_gpio_table[] = {
@@ -4312,7 +4309,7 @@ static struct flashlight_platform_data flashlight_data = {
 };
 
 static struct platform_device flashlight_device = {
-	.name = "FLASHLIGHT_AAT1271",
+	.name = AAT_FLT_DEV_NAME,
 	.dev = {
 		.platform_data	= &flashlight_data,
 	},
@@ -4527,7 +4524,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
 	&kingdom_rfkill,
 #endif
-#ifdef CONFIG_FLASHLIGHT_AAT1271
+#ifdef CONFIG_FLASHLIGHT_AAT
 	&flashlight_device,
 #endif
 	&pm8058_leds,

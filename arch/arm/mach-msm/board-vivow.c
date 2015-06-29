@@ -1185,19 +1185,13 @@ struct resource msm_camera_resources[] = {
 	},
 };
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-static int flashlight_control(int mode)
-{
-	return aat1271_flashlight_control(mode);
-}
-
-static uint32_t fl_gpio_table[] = {
-	GPIO_CFG(VIVOW_GPIO_TORCH_EN, 0,
-				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-};
-
+#ifdef CONFIG_FLASHLIGHT_AAT
 static void config_vivow_flashlight_gpios(void)
 {
+	uint32_t fl_gpio_table[] = {
+		GPIO_CFG(VIVOW_GPIO_TORCH_EN, 0,
+				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	};
 	config_gpio_table(fl_gpio_table,
 		ARRAY_SIZE(fl_gpio_table));
 }
@@ -1211,7 +1205,7 @@ static struct flashlight_platform_data vivow_flashlight_data = {
 };
 
 static struct platform_device vivow_flashlight_device = {
-	.name = FLASHLIGHT_NAME,
+	.name = AAT_FLT_DEV_NAME,
 	.dev		= {
 		.platform_data	= &vivow_flashlight_data,
 	},
@@ -1267,6 +1261,15 @@ static void vivow_seccam_clk_switch(void){
 	return;
 }
 #endif
+
+static int flashlight_control(int mode)
+{
+#ifdef CONFIG_FLASHLIGHT_AAT
+	return aat1271_flashlight_control(mode);
+#else
+	return 0;
+#endif
+}
 
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash = flashlight_control,
@@ -3322,7 +3325,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
 	&vivow_rfkill,
 #endif
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+#ifdef CONFIG_FLASHLIGHT_AAT
 	&vivow_flashlight_device,
 #endif
 	&cable_detect_device,

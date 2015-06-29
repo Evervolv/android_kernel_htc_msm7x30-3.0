@@ -2017,59 +2017,6 @@ static struct resource msm_camera_resources[] = {
 	},
 };
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-static int flashlight_control(int mode)
-{
-	if (system_rev == 0)
-		return aat1271_flashlight_control(mode);
-	return adp1650_flashlight_control(mode);
-}
-
-static void config_lexikon_flashlight_gpios_XA(void)
-{
-	uint32_t flashlight_gpio_table[] = {
-		GPIO_CFG(LEXIKON_GPIO_TORCH_EN, 0, GPIO_CFG_OUTPUT,
-						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-		GPIO_CFG(LEXIKON_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
-						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	};
-	config_gpio_table(flashlight_gpio_table,
-		ARRAY_SIZE(flashlight_gpio_table));
-}
-
-static void config_lexikon_flashlight_gpios(void)
-{
-	uint32_t flashlight_gpio_table[] = {
-		GPIO_CFG(LEXIKON_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
-						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	};
-	config_gpio_table(flashlight_gpio_table,
-		ARRAY_SIZE(flashlight_gpio_table));
-	gpio_set_value(LEXIKON_GPIO_FLASH_EN, 0);
-}
-
-static struct flashlight_platform_data lexikon_flashlight_data = {
-	.gpio_init = config_lexikon_flashlight_gpios,
-	.flash = LEXIKON_GPIO_FLASH_EN,
-	.flash_duration_ms = 600,
-	.led_count = 1,
-};
-
-static struct platform_device lexikon_flashlight_device = {
-	.name = FLASHLIGHT_NAME,
-	.dev = {
-		.platform_data  = &lexikon_flashlight_data,
-	},
-};
-
-static struct i2c_board_info lexikon_flashlight[] = {
-{
-	I2C_BOARD_INFO(FLASHLIGHT_NAME, 0x60 >> 1),
-	.platform_data	= &lexikon_flashlight_data,
-	},
-};
-#endif
-
 struct msm_camera_device_platform_data msm_camera_device_data = {
 	.camera_gpio_on  = config_lexikon_camera_on_gpios,
 	.camera_gpio_off = config_lexikon_camera_off_gpios,
@@ -2080,6 +2027,22 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.camifpadphy = 0xAB000000,
 	.ioext.camifpadsz  = 0x00000400
 };
+
+static int flashlight_control(int mode)
+{
+	if (system_rev == 0) {
+#ifdef CONFIG_FLASHLIGHT_AAT
+		return aat1271_flashlight_control(mode);
+#else
+		return 0;
+#endif
+	}
+#ifdef CONFIG_FLASHLIGHT_ADP1650
+	return adp1650_flashlight_control(mode);
+#else
+	return 0;
+#endif
+}
 
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash		= flashlight_control,
@@ -2112,27 +2075,6 @@ static struct platform_device msm_camera_sensor_s5k4e1gx = {
 };
 #endif
 
-#ifdef CONFIG_MSM_GEMINI
-static struct resource msm_gemini_resources[] = {
-	{
-		.start  = 0xA3A00000,
-		.end    = 0xA3A00000 + 0x0150 - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_JPEG,
-		.end    = INT_JPEG,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_gemini_device = {
-	.name           = "msm_gemini",
-	.resource       = msm_gemini_resources,
-	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
-};
-#endif
-
 #ifdef CONFIG_MSM_VPE
 static struct resource msm_vpe_resources[] = {
 	{
@@ -2155,6 +2097,79 @@ static struct platform_device msm_vpe_device = {
 };
 #endif
 #endif /*CONFIG_MSM_CAMERA*/
+
+#ifdef CONFIG_MSM_GEMINI
+static struct resource msm_gemini_resources[] = {
+	{
+		.start  = 0xA3A00000,
+		.end    = 0xA3A00000 + 0x0150 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = INT_JPEG,
+		.end    = INT_JPEG,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_gemini_device = {
+	.name           = "msm_gemini",
+	.resource       = msm_gemini_resources,
+	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+};
+#endif
+
+#if defined (CONFIG_FLASHLIGHT_AAT)
+static void config_lexikon_flashlight_gpios_XA(void)
+{
+	uint32_t flashlight_gpio_table[] = {
+		GPIO_CFG(LEXIKON_GPIO_TORCH_EN, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		GPIO_CFG(LEXIKON_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	};
+	config_gpio_table(flashlight_gpio_table,
+		ARRAY_SIZE(flashlight_gpio_table));
+}
+#endif
+
+#if defined (CONFIG_FLASHLIGHT_AAT) || defined (CONFIG_FLASHLIGHT_ADP1650)
+static void config_lexikon_flashlight_gpios(void)
+{
+	uint32_t flashlight_gpio_table[] = {
+		GPIO_CFG(LEXIKON_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	};
+	config_gpio_table(flashlight_gpio_table,
+		ARRAY_SIZE(flashlight_gpio_table));
+	gpio_set_value(LEXIKON_GPIO_FLASH_EN, 0);
+}
+
+static struct flashlight_platform_data lexikon_flashlight_data = {
+	.gpio_init = config_lexikon_flashlight_gpios,
+	.flash = LEXIKON_GPIO_FLASH_EN,
+	.flash_duration_ms = 600,
+	.led_count = 1,
+};
+#endif
+
+#ifdef CONFIG_FLASHLIGHT_AAT
+static struct platform_device lexikon_flashlight_device = {
+	.name = FLASHLIGHT_NAME,
+	.dev = {
+		.platform_data  = &lexikon_flashlight_data,
+	},
+};
+#endif
+
+#ifdef CONFIG_FLASHLIGHT_ADP1650
+static struct i2c_board_info lexikon_flashlight[] = {
+	{
+		I2C_BOARD_INFO(FLASHLIGHT_NAME, 0x60 >> 1),
+		.platform_data	= &lexikon_flashlight_data,
+	},
+};
+#endif
 
 #ifdef CONFIG_BT
 static struct platform_device lexikon_rfkill = {
@@ -3054,18 +3069,20 @@ static void __init lexikon_init(void)
 	i2c_register_board_info(0, i2c_tps_devices,
 			ARRAY_SIZE(i2c_tps_devices));
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 	if (system_rev == 0) {
+#ifdef CONFIG_FLASHLIGHT_AAT
 		/* for XA board */
 		lexikon_flashlight_data.torch = LEXIKON_GPIO_TORCH_EN;
 		lexikon_flashlight_data.gpio_init = \
 					config_lexikon_flashlight_gpios_XA;
 		platform_device_register(&lexikon_flashlight_device);
+#endif
 	} else {
+#ifdef CONFIG_FLASHLIGHT_ADP1650
 		i2c_register_board_info(0, lexikon_flashlight,
 			ARRAY_SIZE(lexikon_flashlight));
-	}
 #endif
+	}
 
 	i2c_register_board_info(0, tpa2051_devices,
 			ARRAY_SIZE(tpa2051_devices));

@@ -28,7 +28,7 @@
 #include <linux/leds.h>
 #include <linux/hrtimer.h>
 #include <linux/slab.h>
-
+#include <linux/module.h>
 
 #define FLT_DBG_LOG(fmt, ...) \
 		printk(KERN_DEBUG "[FLT]" fmt, ##__VA_ARGS__)
@@ -44,10 +44,13 @@ struct flashlight_struct {
 	spinlock_t spin_lock;
 	uint32_t gpio_torch;
 	uint32_t gpio_flash;
+	uint32_t torch_set1;
+	uint32_t torch_set2;
 	uint32_t flash_sw_timeout_ms;
 	enum flashlight_mode_flags mode_status;
 	unsigned long spinlock_flags;
 	uint8_t led_count;
+        enum flashlight_chip chip_model;
 };
 static struct flashlight_struct *this_fl_str;
 
@@ -224,6 +227,113 @@ int aat1271_flashlight_control(int mode)
 	return ret;
 }
 
+int aat1277_flashlight_control(int mode)
+{
+	int ret = 0;
+	uint32_t flash_ns = ktime_to_ns(ktime_get());
+	if (this_fl_str->mode_status == mode) {
+		FLT_INFO_LOG("%s: mode is same: %d\n",
+							"aat1277_flashlight", mode);
+
+		if (!hrtimer_active(&this_fl_str->timer) &&
+			this_fl_str->mode_status == FL_MODE_OFF) {
+			FLT_INFO_LOG("flashlight hasn't been enable or" \
+				" has already reset to 0 due to timeout\n");
+			return ret;
+		} else
+			return -EINVAL;
+	}
+
+	spin_lock_irqsave(&this_fl_str->spin_lock,
+						this_fl_str->spinlock_flags);
+	if (this_fl_str->mode_status == FL_MODE_FLASH) {
+		hrtimer_cancel(&this_fl_str->timer);
+		flashlight_turn_off();
+	}
+
+	switch (mode) {
+	case FL_MODE_OFF:
+		flashlight_turn_off();
+
+	break;
+	case FL_MODE_TORCH:
+		gpio_direction_output(this_fl_str->gpio_torch, 0);
+		gpio_set_value(this_fl_str->torch_set1, 1);
+		gpio_set_value(this_fl_str->torch_set2, 1);
+		gpio_direction_output(this_fl_str->gpio_torch, 1);
+		this_fl_str->mode_status = FL_MODE_TORCH;
+		this_fl_str->fl_lcdev.brightness = LED_HALF;
+	break;
+
+	case FL_MODE_FLASH:
+		gpio_direction_output(this_fl_str->gpio_flash, 1);
+		this_fl_str->mode_status = FL_MODE_FLASH;
+		this_fl_str->fl_lcdev.brightness = LED_FULL;
+
+		hrtimer_start(&this_fl_str->timer,
+			ktime_set(this_fl_str->flash_sw_timeout_ms / 1000,
+				(this_fl_str->flash_sw_timeout_ms % 1000) *
+					NSEC_PER_MSEC), HRTIMER_MODE_REL);
+	break;
+	case FL_MODE_PRE_FLASH:
+		gpio_direction_output(this_fl_str->gpio_torch, 0);
+		gpio_set_value(this_fl_str->torch_set1, 1);
+		gpio_set_value(this_fl_str->torch_set2, 1);
+		gpio_direction_output(this_fl_str->gpio_torch, 1);
+		this_fl_str->mode_status = FL_MODE_PRE_FLASH;
+		this_fl_str->fl_lcdev.brightness = LED_HALF + 1;
+	break;
+	case FL_MODE_TORCH_LEVEL_1:
+		gpio_direction_output(this_fl_str->gpio_torch, 0);
+		gpio_set_value(this_fl_str->torch_set1, 0);
+		gpio_set_value(this_fl_str->torch_set2, 0);
+		gpio_direction_output(this_fl_str->gpio_torch, 1);
+		this_fl_str->mode_status = FL_MODE_TORCH_LEVEL_1;
+		this_fl_str->fl_lcdev.brightness = LED_HALF - 2;
+	break;
+	case FL_MODE_TORCH_LEVEL_2:
+		gpio_direction_output(this_fl_str->gpio_torch, 0);
+		gpio_set_value(this_fl_str->torch_set1, 0);
+		gpio_set_value(this_fl_str->torch_set2, 1);
+		gpio_direction_output(this_fl_str->gpio_torch, 1);
+		this_fl_str->mode_status = FL_MODE_TORCH_LEVEL_2;
+		this_fl_str->fl_lcdev.brightness = LED_HALF - 1;
+	break;
+
+	default:
+		FLT_ERR_LOG("%s: unknown flash_light flags: %d\n",
+							__func__, mode);
+		ret = -EINVAL;
+	break;
+	}
+
+	FLT_INFO_LOG("%s: mode: %d, %u\n", "aat1277_flashlight", mode,
+		flash_ns/(1000*1000));
+
+	spin_unlock_irqrestore(&this_fl_str->spin_lock,
+						this_fl_str->spinlock_flags);
+	return ret;
+}
+
+int aat_flashlight_control(int mode)
+{
+  int rc = -ENODEV;
+
+  if (!this_fl_str)
+    return rc;
+
+  switch(this_fl_str->chip_model)
+    {
+    case AAT1271:
+      rc = aat1271_flashlight_control(mode);
+      break;
+    case AAT1277:
+      rc = aat1277_flashlight_control(mode);
+      break;
+    }
+    return rc;
+}
+
 static void fl_lcdev_brightness_set(struct led_classdev *led_cdev,
 						enum led_brightness brightness)
 {
@@ -256,9 +366,10 @@ static void fl_lcdev_brightness_set(struct led_classdev *led_cdev,
 	} else
 		/* off and else */
 		mode = FL_MODE_OFF;
-
-
-		aat1271_flashlight_control(mode);
+                if (fl_str->chip_model == AAT1271)
+                  aat1271_flashlight_control(mode);
+                else if (fl_str->chip_model == AAT1277)
+                  aat1277_flashlight_control(mode);
 
 	return;
 }
@@ -271,7 +382,6 @@ static void flashlight_early_suspend(struct early_suspend *handler)
 		if (fl_str->mode_status == FL_MODE_FLASH)
 			hrtimer_cancel(&fl_str->timer);
 		spin_lock_irqsave(&fl_str->spin_lock, fl_str->spinlock_flags);
-		flashlight_turn_off();
 		spin_unlock_irqrestore(&fl_str->spin_lock,
 						fl_str->spinlock_flags);
 	}
@@ -308,7 +418,23 @@ static int flashlight_setup_gpio(struct flashlight_platform_data *flashlight,
 		}
 		fl_str->gpio_flash = flashlight->flash;
 	}
+	if (flashlight->torch_set1) {
+		ret = gpio_request(flashlight->torch_set1, "fl_torch_set1");
+		if (ret < 0) {
+			FLT_ERR_LOG("%s: gpio_request(fl_torch_set1) failed\n", __func__);
+			return ret;
+		}
+		fl_str->torch_set1 = flashlight->torch_set1;
+	}
 
+	if (flashlight->torch_set2) {
+		ret = gpio_request(flashlight->torch_set2, "fl_torch_set2");
+		if (ret < 0) {
+			FLT_ERR_LOG("%s: gpio_request(fl_torch_set2) failed\n", __func__);
+			return ret;
+		}
+		fl_str->torch_set2 = flashlight->torch_set2;
+	}
 	return ret;
 }
 
@@ -324,6 +450,15 @@ static int flashlight_free_gpio(struct flashlight_platform_data *flashlight,
 	if (fl_str->gpio_flash) {
 		gpio_free(flashlight->flash);
 		fl_str->gpio_flash = 0;
+	}
+	if (fl_str->torch_set1) {
+		gpio_free(flashlight->torch_set1);
+		fl_str->torch_set1 = 0;
+	}
+
+	if (fl_str->torch_set2) {
+		gpio_free(flashlight->torch_set2);
+		fl_str->torch_set2 = 0;
 	}
 	return ret;
 }
@@ -352,6 +487,7 @@ static int flashlight_probe(struct platform_device *pdev)
 		fl_str->flash_sw_timeout_ms = flashlight->flash_duration_ms;
 	else /* load default value */
 		fl_str->flash_sw_timeout_ms = 600;
+        fl_str->chip_model = flashlight->chip_model;
 	err = led_classdev_register(&pdev->dev, &fl_str->fl_lcdev);
 	if (err < 0) {
 		FLT_ERR_LOG("%s: failed on led_classdev_register\n", __func__);
@@ -396,7 +532,7 @@ static struct platform_driver flashlight_driver = {
 	.probe		= flashlight_probe,
 	.remove		= flashlight_remove,
 	.driver		= {
-		.name		= "FLASHLIGHT_AAT1271",
+                .name		= AAT_FLT_DEV_NAME,
 		.owner		= THIS_MODULE,
 	},
 };

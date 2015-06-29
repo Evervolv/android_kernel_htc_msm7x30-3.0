@@ -53,6 +53,7 @@ obj-$(CONFIG_LEDS_PM8058)		+= leds-pm8058.o
 obj-$(CONFIG_LEDS_MAX8957_LPG)		+= leds-max8957-lpg.o
 obj-$(CONFIG_LEDS_QCIBL)		+= leds-qci-backlight.o
 obj-$(CONFIG_LEDS_MSM_PDM)		+= leds-msm-pdm.o
+obj-$(CONFIG_LEDS_MAX8957_FLASH)	+= leds-max8957-flash.o
 
 # LED SPI Drivers
 obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
@@ -66,9 +67,8 @@ obj-$(CONFIG_LEDS_TRIGGER_GPIO)		+= ledtrig-gpio.o
 obj-$(CONFIG_LEDS_TRIGGER_DEFAULT_ON)	+= ledtrig-default-on.o
 obj-$(CONFIG_LEDS_TRIGGER_SLEEP)	+= ledtrig-sleep.o
 
-# FLASHLIGHT Drivers
+# Flashlight Drivers
 obj-$(CONFIG_FLASHLIGHT_TPS61310)	+= tps61310_flashlight.o
-obj-$(CONFIG_FLASHLIGHT_AAT1271)	+= flashlight_aat1271.o
-obj-$(CONFIG_FLASHLIGHT_AAT1277)        += flashlight_aat1277.o
-obj-$(CONFIG_LEDS_MAX8957_FLASH)	+= leds-max8957-flash.o
+obj-$(CONFIG_FLASHLIGHT_AAT)		+= aat_flashlight.o
+obj-$(CONFIG_FLASHLIGHT_ADP1650)	+= adp1650_flashlight.o
 

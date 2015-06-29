@@ -2140,42 +2140,6 @@ static struct resource msm_camera_resources[] = {
 	},
 };
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-static int flashlight_control(int mode)
-{
-	return aat1271_flashlight_control(mode);
-}
-
-static uint32_t fl_gpio_table[] = {
-	GPIO_CFG(GLACIER_GPIO_FLASHLIGHT_TORCH, 0,
-				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(GLACIER_GPIO_FLASHLIGHT_FLASH, 0,
-				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-
-};
-
-static void config_glacier_flashlight_gpios(void)
-{
-	config_gpio_table(fl_gpio_table,
-		ARRAY_SIZE(fl_gpio_table));
-}
-
-static struct flashlight_platform_data glacier_flashlight_data = {
-	.gpio_init  = config_glacier_flashlight_gpios,
-	.torch = GLACIER_GPIO_FLASHLIGHT_TORCH,
-	.flash = GLACIER_GPIO_FLASHLIGHT_FLASH,
-	.flash_duration_ms = 600,
-	.led_count = 1,
-};
-
-static struct platform_device glacier_flashlight_device = {
-	.name = FLASHLIGHT_NAME,
-	.dev		= {
-		.platform_data	= &glacier_flashlight_data,
-	},
-};
-#endif
-
 struct msm_camera_device_platform_data msm_camera_device_data = {
 	.camera_gpio_on  = config_glacier_camera_on_gpios,
 	.camera_gpio_off = config_glacier_camera_off_gpios,
@@ -2186,6 +2150,15 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.camifpadphy = 0xAB000000,
 	.ioext.camifpadsz  = 0x00000400
 };
+
+static int flashlight_control(int mode)
+{
+#ifdef CONFIG_FLASHLIGHT_AAT
+	return aat1271_flashlight_control(mode);
+#else
+	return 0;
+#endif
+}
 
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash		= flashlight_control,
@@ -2276,27 +2249,6 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 };
 #endif
 
-#ifdef CONFIG_MSM_GEMINI
-static struct resource msm_gemini_resources[] = {
-	{
-		.start  = 0xA3A00000,
-		.end    = 0xA3A00000 + 0x0150 - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_JPEG,
-		.end    = INT_JPEG,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_gemini_device = {
-	.name           = "msm_gemini",
-	.resource       = msm_gemini_resources,
-	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
-};
-#endif
-
 #ifdef CONFIG_MSM_VPE
 static struct resource msm_vpe_resources[] = {
 	{
@@ -2319,6 +2271,57 @@ static struct platform_device msm_vpe_device = {
 };
 #endif
 #endif /*CONFIG_MSM_CAMERA*/
+
+#ifdef CONFIG_MSM_GEMINI
+static struct resource msm_gemini_resources[] = {
+	{
+		.start  = 0xA3A00000,
+		.end    = 0xA3A00000 + 0x0150 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = INT_JPEG,
+		.end    = INT_JPEG,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_gemini_device = {
+	.name           = "msm_gemini",
+	.resource       = msm_gemini_resources,
+	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+};
+#endif
+
+#ifdef CONFIG_FLASHLIGHT_AAT
+static void config_flashlight_gpios(void)
+{
+	static uint32_t flashlight_gpio_table[] = {
+		GPIO_CFG(GLACIER_GPIO_FLASHLIGHT_TORCH, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		GPIO_CFG(GLACIER_GPIO_FLASHLIGHT_FLASH, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	};
+
+	gpio_tlmm_config(flashlight_gpio_table[0], GPIO_CFG_ENABLE);
+	gpio_tlmm_config(flashlight_gpio_table[1], GPIO_CFG_ENABLE);
+}
+
+static struct flashlight_platform_data flashlight_data = {
+	.gpio_init = config_flashlight_gpios,
+	.torch = GLACIER_GPIO_FLASHLIGHT_TORCH,
+	.flash = GLACIER_GPIO_FLASHLIGHT_FLASH,
+	.flash_duration_ms = 600,
+	.led_count = 1,
+};
+
+static struct platform_device glacier_flashlight_device = {
+	.name = AAT_FLT_DEV_NAME,
+	.dev = {
+		.platform_data	= &flashlight_data,
+	},
+};
+#endif
 
 #ifdef CONFIG_BT
 static struct platform_device glacier_rfkill = {
@@ -2949,11 +2952,19 @@ static struct platform_device *devices[] __initdata = {
         &msm_kgsl_3d0,
         &msm_kgsl_2d0,
         &msm_device_vidc_720p,
-#ifdef CONFIG_MSM_GEMINI
-        &msm_gemini_device,
+#ifdef CONFIG_MSM_CAMERA
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
+#ifdef CONFIG_MT9V113
+	&msm_camera_sensor_mt9v113,
 #endif
 #ifdef CONFIG_MSM_VPE
         &msm_vpe_device,
+#endif
+#endif
+#ifdef CONFIG_MSM_GEMINI
+        &msm_gemini_device,
 #endif
 #if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
         &msm_device_tsif,
@@ -2969,12 +2980,6 @@ static struct platform_device *devices[] __initdata = {
         &qcedev_device,
 #endif
 
-#ifdef CONFIG_S5K4E1GX
-        &msm_camera_sensor_s5k4e1gx,
-#endif
-#ifdef CONFIG_MT9V113
-	&msm_camera_sensor_mt9v113,
-#endif
         &htc_battery_pdev,
 	&msm_adc_device,
         &msm_ebi0_thermal,
@@ -2988,7 +2993,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
         &glacier_rfkill,
 #endif
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+#ifdef CONFIG_FLASHLIGHT_AAT
         &glacier_flashlight_device,
 #endif
 };

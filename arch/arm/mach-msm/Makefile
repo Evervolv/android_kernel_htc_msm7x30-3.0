@@ -533,10 +533,6 @@ endif
 obj-$(CONFIG_MACH_KINGDOM) += board-kingdom-mmc.o
 obj-$(CONFIG_MACH_KINGDOM) += htc_bdaddress.o board-kingdom-rfkill.o
 
-ifneq ($(CONFIG_MACH_LEXIKON),y)
-obj-$(CONFIG_ARCH_MSM_FLASHLIGHT) += msm_flashlight.o
-endif
-
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 
 obj-$(CONFIG_ARCH_FSM9XXX) += board-fsm9xxx.o

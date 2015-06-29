@@ -25,7 +25,6 @@ obj-$(CONFIG_SENSORS_CAPSENSE_EXPRESS)	+= cap_sense_express.o
 obj-$(CONFIG_VP_A1026)		+= a1026.o
 obj-$(CONFIG_VP_A1028)		+= a1028.o
 obj-$(CONFIG_AMP_TPA2051D3)		+= tpa2051d3.o
-obj-$(CONFIG_ARCH_MSM_FLASHLIGHT)	+= adp1650_flashlight.o
 obj-$(CONFIG_INPUT_ISL29028)	+= isl29028.o
 obj-$(CONFIG_INPUT_ISL29029)	+= isl29029.o
 obj-$(CONFIG_TPS65200)          += tps65200.o

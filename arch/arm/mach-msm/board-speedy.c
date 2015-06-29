@@ -1921,40 +1921,6 @@ static struct resource msm_camera_resources[] = {
 	},
 };
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-static int flashlight_control(int mode)
-{
-	return adp1650_flashlight_control(mode);
-}
-
-uint32_t flashlight_gpio_table[] = {
-	GPIO_CFG(SPEEDY_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
-						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-};
-
-static void config_speedy_flashlight_gpios(void)
-{
-	config_gpio_table(flashlight_gpio_table,
-		ARRAY_SIZE(flashlight_gpio_table));
-	gpio_set_value(SPEEDY_GPIO_FLASH_EN, 0);
-}
-
-static struct flashlight_platform_data speedy_flashlight_data = {
-	.gpio_init = config_speedy_flashlight_gpios,
-	.flash = SPEEDY_GPIO_FLASH_EN,
-	.flash_duration_ms = 600,
-	.led_count = 1,
-};
-
-
-static struct i2c_board_info speedy_flashlight[] = {
-{
-	I2C_BOARD_INFO(FLASHLIGHT_NAME, 0x60 >> 1),
-	.platform_data	= &speedy_flashlight_data,
-	},
-};
-#endif
-
 struct msm_camera_device_platform_data msm_camera_device_data = {
 	.camera_gpio_on  = config_speedy_camera_on_gpios,
 	.camera_gpio_off = config_speedy_camera_off_gpios,
@@ -1965,6 +1931,15 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.camifpadphy = 0xAB000000,
 	.ioext.camifpadsz  = 0x00000400
 };
+
+static int flashlight_control(int mode)
+{
+#ifdef CONFIG_FLASHLIGHT_ADP1650
+	return adp1650_flashlight_control(mode);
+#else
+	return 0;
+#endif
+}
 
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash		= flashlight_control,
@@ -2001,27 +1976,6 @@ static struct platform_device msm_camera_sensor_s5k4e1gx = {
 };
 #endif
 
-#ifdef CONFIG_MSM_GEMINI
-static struct resource msm_gemini_resources[] = {
-	{
-		.start  = 0xA3A00000,
-		.end    = 0xA3A00000 + 0x0150 - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_JPEG,
-		.end    = INT_JPEG,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_gemini_device = {
-	.name           = "msm_gemini",
-	.resource       = msm_gemini_resources,
-	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
-};
-#endif
-
 #ifdef CONFIG_MSM_VPE
 static struct resource msm_vpe_resources[] = {
 	{
@@ -2044,6 +1998,54 @@ static struct platform_device msm_vpe_device = {
 };
 #endif
 #endif /*CONFIG_MSM_CAMERA*/
+
+#ifdef CONFIG_MSM_GEMINI
+static struct resource msm_gemini_resources[] = {
+	{
+		.start  = 0xA3A00000,
+		.end    = 0xA3A00000 + 0x0150 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = INT_JPEG,
+		.end    = INT_JPEG,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_gemini_device = {
+	.name           = "msm_gemini",
+	.resource       = msm_gemini_resources,
+	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+};
+#endif
+
+#ifdef CONFIG_FLASHLIGHT_ADP1650
+static void config_speedy_flashlight_gpios(void)
+{
+	uint32_t flashlight_gpio_table[] = {
+		GPIO_CFG(SPEEDY_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	};
+	config_gpio_table(flashlight_gpio_table,
+		ARRAY_SIZE(flashlight_gpio_table));
+	gpio_set_value(SPEEDY_GPIO_FLASH_EN, 0);
+}
+
+static struct flashlight_platform_data speedy_flashlight_data = {
+	.gpio_init = config_speedy_flashlight_gpios,
+	.flash = SPEEDY_GPIO_FLASH_EN,
+	.flash_duration_ms = 600,
+	.led_count = 1,
+};
+
+static struct i2c_board_info speedy_flashlight[] = {
+	{
+		I2C_BOARD_INFO(FLASHLIGHT_NAME, 0x60 >> 1),
+		.platform_data	= &speedy_flashlight_data,
+	},
+};
+#endif
 
 #ifdef CONFIG_BT
 static struct platform_device speedy_rfkill = {
@@ -2895,7 +2897,7 @@ static void __init speedy_init(void)
 	i2c_register_board_info(0, i2c_devices,
 			ARRAY_SIZE(i2c_devices));
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+#ifdef CONFIG_FLASHLIGHT_ADP1650
 	i2c_register_board_info(0, speedy_flashlight,
 			ARRAY_SIZE(speedy_flashlight));
 #endif

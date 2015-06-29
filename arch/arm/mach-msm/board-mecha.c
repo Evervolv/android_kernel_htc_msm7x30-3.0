@@ -163,14 +163,7 @@ unsigned int mecha_get_engineerid(void)
 	return engineerid;
 }
 
-#define GPIO_INPUT      0
-#define GPIO_OUTPUT     1
-
-#define GPIO_NO_PULL    0
-#define GPIO_PULL_DOWN  1
-#define GPIO_PULL_UP    3
-
-#define PCOM_GPIO_CFG(gpio, func, dir, pull, drvstr) \
+#define GPIO_CFG(gpio, func, dir, pull, drvstr) \
 		((((gpio) & 0x3FF) << 4)        | \
 		((func) & 0xf)                  | \
 		(((dir) & 0x1) << 14)           | \
@@ -1120,9 +1113,12 @@ static void Mecha_seccam_clk_switch(void){
 
 static int flashlight_control(int mode)
 {
+#ifdef CONFIG_FLASHLIGHT_AAT
 	return aat1271_flashlight_control(mode);
+#else
+	return 0;
+#endif
 }
-
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash = flashlight_control,
 	.num_flash_levels = FLASHLIGHT_NUM,
@@ -1144,7 +1140,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k3h1gx_data = {
   .resource = msm_camera_resources,
   .num_resources = ARRAY_SIZE(msm_camera_resources),
   .power_down_disable = false, /* true: disable pwd down function */
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+#ifdef CONFIG_FLASHLIGHT_AAT
   .flash_cfg = &msm_camera_sensor_flash_cfg,
 #endif
   .csi_if = 1,
@@ -1238,10 +1234,10 @@ static struct tpa2051d3_platform_data tpa2051d3_platform_data = {
 };
 
 static unsigned aux_pcm_gpio_off[] = {
-        GPIO_CFG(138, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_DOUT */
-        GPIO_CFG(139, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_DIN  */
-        GPIO_CFG(140, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_SYNC */
-        GPIO_CFG(141, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_CLK  */
+	GPIO_CFG(138, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_DOUT */
+	GPIO_CFG(139, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),   /* PCM_DIN  */
+	GPIO_CFG(140, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_SYNC */
+	GPIO_CFG(141, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_CLK  */
 };
 
 static void __init aux_pcm_gpio_init(void)
@@ -2384,22 +2380,22 @@ static void config_mecha_usb_uart_gpios(int uart)
 /* UART3 debug port init. This is supposed to be init in bootloader */
 static uint32_t mecha_serial_debug_table[] = {
 	/* for uart debugger. It should be removed when support usb to serial function */
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_RX, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* RX */
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_TX, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* TX */
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_RTS, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* RTS */
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_CTS, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* CTS */
+	GPIO_CFG(MECHA_GPIO_UART3_RX, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* RX */
+	GPIO_CFG(MECHA_GPIO_UART3_TX, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* TX */
+	GPIO_CFG(MECHA_GPIO_UART3_RTS, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* RTS */
+	GPIO_CFG(MECHA_GPIO_UART3_CTS, 1, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP, GPIO_CFG_4MA), /* CTS */
 };
 
 /* UART3 debug port init. This is supposed to be init in bootloader */
 static uint32_t mecha_serial_debug_off_table[] = {
 	/* for uart debugger. It should be removed when support usb to serial function */
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_RX, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), /* RX */
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_TX, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA), /* TX */
+	GPIO_CFG(MECHA_GPIO_UART3_RX, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), /* RX */
+	GPIO_CFG(MECHA_GPIO_UART3_TX, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA), /* TX */
 };
 
 static uint32_t mecha_serial_debug_ac_detect_table[] = {
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_RX, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
-	PCOM_GPIO_CFG(MECHA_GPIO_UART3_TX, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+	GPIO_CFG(MECHA_GPIO_UART3_RX, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
+	GPIO_CFG(MECHA_GPIO_UART3_TX, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
 };
 
 /*1: china ac*/
@@ -2881,25 +2877,26 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resources,
 };
 
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+#ifdef CONFIG_FLASHLIGHT_AAT
 static void config_flashlight_gpios_xa(void)
 {
 	uint32_t flashlight_gpio_table[] = {
-		PCOM_GPIO_CFG(MECHA_GPIO_TORCH_EN, 0, GPIO_OUTPUT,
-						GPIO_NO_PULL, GPIO_CFG_2MA),
-		PCOM_GPIO_CFG(MECHA_GPIO_FLASH_EN_XA, 0, GPIO_OUTPUT,
-						GPIO_NO_PULL, GPIO_CFG_2MA),
+		GPIO_CFG(MECHA_GPIO_TORCH_EN, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		GPIO_CFG(MECHA_GPIO_FLASH_EN_XA, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	};
 	config_gpio_table(flashlight_gpio_table,
 		ARRAY_SIZE(flashlight_gpio_table));
 }
+
 static void config_flashlight_gpios(void)
 {
 	uint32_t flashlight_gpio_table[] = {
-		PCOM_GPIO_CFG(MECHA_GPIO_TORCH_EN, 0, GPIO_OUTPUT,
-						GPIO_NO_PULL, 0),
-		PCOM_GPIO_CFG(MECHA_GPIO_FLASH_EN, 0, GPIO_OUTPUT,
-						GPIO_NO_PULL, 0),
+		GPIO_CFG(MECHA_GPIO_TORCH_EN, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, 0),
+		GPIO_CFG(MECHA_GPIO_FLASH_EN, 0, GPIO_CFG_OUTPUT,
+						GPIO_CFG_NO_PULL, 0),
 	};
 	config_gpio_table(flashlight_gpio_table,
 		ARRAY_SIZE(flashlight_gpio_table));
@@ -2914,7 +2911,7 @@ static struct flashlight_platform_data flashlight_data = {
 };
 
 static struct platform_device flashlight_device = {
-	.name = FLASHLIGHT_NAME,
+	.name = AAT_FLT_DEV_NAME,
 	.dev = {
 		.platform_data	= &flashlight_data,
 	},
@@ -4094,17 +4091,17 @@ static void msm_sdc1_lvlshft_enable(void)
 #endif
 
 static uint32_t sdc2_gpio_table[] = {
-	GPIO_CFG(64, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_16MA), /* CLK */
-	GPIO_CFG(65, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* CMD */
-	GPIO_CFG(66, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT3 */
-	GPIO_CFG(67, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT2 */
-	GPIO_CFG(68, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT1 */
-	GPIO_CFG(69, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT0 */
+	GPIO_CFG(64, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), /* CLK */
+	GPIO_CFG(65, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* CMD */
+	GPIO_CFG(66, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT3 */
+	GPIO_CFG(67, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT2 */
+	GPIO_CFG(68, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT1 */
+	GPIO_CFG(69, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT0 */
 
-	GPIO_CFG(112, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT7 */
-	GPIO_CFG(113, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT6 */
-	GPIO_CFG(114, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT5 */
-	GPIO_CFG(115, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_CFG_10MA), /* DAT4 */
+	GPIO_CFG(112, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT7 */
+	GPIO_CFG(113, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT6 */
+	GPIO_CFG(114, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT5 */
+	GPIO_CFG(115, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_10MA), /* DAT4 */
 };
 
 static void __init msm7x30_init_mmc(void)
@@ -4460,11 +4457,13 @@ static void __init mecha_init(void)
 	} else
 			platform_add_devices(device_pm8058_led_XC,
 					ARRAY_SIZE(device_pm8058_led_XC));
+#ifdef CONFIG_FLASHLIGHT_AAT
 	if (system_rev == 0) {
 			flashlight_data.gpio_init = config_flashlight_gpios_xa;
 			flashlight_data.flash = MECHA_GPIO_FLASH_EN_XA;
 	}
 	platform_device_register(&flashlight_device);
+#endif
 
 	msm_init_pmic_vibrator(3000);
 

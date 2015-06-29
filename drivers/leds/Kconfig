@@ -557,22 +557,24 @@ config LEDS_TRIGGER_SLEEP
 	help
 	  This turns LEDs on when the screen is off but the cpu still running.
 
+comment "iptables trigger is under Netfilter config (LED target)"
+	depends on LEDS_TRIGGERS
+
+comment "LED Flashlights"
+
 config FLASHLIGHT_TPS61310
 	tristate "TI TPS61310 flashlight"
 	help
-	  Say Y here to enable the TI TPS61310 flashlight
+	  Say Y here to enable the TI TPS61310 flashlight.
 
-config FLASHLIGHT_AAT1271
-	tristate "flashlight AAT1271"
+config FLASHLIGHT_AAT
+	tristate "flashlight AAT1271/7"
 	help
 	  Say Y here to enable the AAT flashlight
 
-config FLASHLIGHT_AAT1277
-        tristate "flashlight AAT1277"
-        help
-          Say Y here to enable the AAT flashlight
-
-comment "iptables trigger is under Netfilter config (LED target)"
-	depends on LEDS_TRIGGERS
+config FLASHLIGHT_ADP1650
+	tristate "flashlight ADP1650"
+	help
+	  Say Y here to enable the ADP1650 flashlight
 
 endif # NEW_LEDS
